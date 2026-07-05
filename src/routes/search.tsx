@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, createFileRoute } from '@tanstack/react-router'
-import { Search, Tv, X } from 'lucide-react'
+import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
+import { ArrowLeft, Search, Tv, X } from 'lucide-react'
 import type { SearchIndexEntry } from '#/lib/anilist/types'
 
 export const Route = createFileRoute('/search')({
@@ -20,6 +20,20 @@ function loadIndex(): Promise<SearchIndexEntry[]> {
     })
   }
   return indexPromise
+}
+
+function BackButton() {
+  const router = useRouter()
+  return (
+    <button
+      type="button"
+      onClick={() => router.history.back()}
+      className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-ink-muted transition hover:bg-surface hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
+      aria-label="Kembali"
+    >
+      <ArrowLeft className="h-5 w-5" />
+    </button>
+  )
 }
 
 function SearchPage() {
@@ -63,6 +77,7 @@ function SearchPage() {
     <div className="season-ambient min-h-dvh bg-bg" data-season="spring">
       <div className={`${CONTAINER} pt-6`}>
         <header className="flex items-center gap-3">
+          <BackButton />
           <Link
             to="/"
             className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent-strong text-accent-ink shadow-lg shadow-black/30 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
@@ -71,7 +86,7 @@ function SearchPage() {
             <Tv className="h-5 w-5" />
           </Link>
           <Link to="/" className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring rounded">
-            <h1 className="text-lg font-bold tracking-tight text-ink">AnimeSeasons</h1>
+            <h1 className="text-lg font-bold tracking-tight text-ink">Cari anime</h1>
           </Link>
         </header>
       </div>

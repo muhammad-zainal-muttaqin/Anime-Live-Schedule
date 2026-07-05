@@ -23,7 +23,6 @@ import {
 
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
 const PER_PAGE = 50
-const MAX_PAGES = 6
 const ANILIST_PACING_MS = 800 // stay well under 90 req/min
 
 const ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID
@@ -102,7 +101,7 @@ async function fetchSeason(season: Season, year: number) {
     pageInfo = p.pageInfo
     page++
     await sleep(ANILIST_PACING_MS)
-  } while (pageInfo.hasNextPage && page <= MAX_PAGES)
+  } while (pageInfo.hasNextPage)
   return { pageInfo, media, fetchedAt: Date.now() }
 }
 
