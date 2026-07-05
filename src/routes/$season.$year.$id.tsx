@@ -1,15 +1,19 @@
+import { useRef } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { AnimeDetailModal } from '#/components/AnimeDetailModal'
+import { useDialog } from '#/lib/hooks'
 import { animeDetailQueryOptions } from '#/lib/queries'
 import { getSeasonalAnime } from '#/server/anilist'
 import { pickTitle } from '#/lib/format'
-import { isSeason, SEASON_LABELS, type Season } from '#/lib/anilist/season'
+import { isSeason, SEASON_LABELS } from '#/lib/anilist/season'
 import type { AnimeMedia } from '#/lib/anilist/types'
 
 export const Route = createFileRoute('/$season/$year/$id')({
-  loader: async ({ params }): Promise<{ anime: AnimeMedia | null; seasonLabel: string }> => {
-    const season = isSeason(params.season) ? (params.season as Season) : 'summer'
+  loader: async ({
+    params,
+  }): Promise<{ anime: AnimeMedia | null; seasonLabel: string }> => {
+    const season = isSeason(params.season) ? params.season : 'summer'
     const year = Number(params.year)
     const id = Number(params.id)
     try {
@@ -27,12 +31,16 @@ export const Route = createFileRoute('/$season/$year/$id')({
     const description = anime?.description
       ? anime.description
       : `Detail anime dari ${seasonLabel} — lihat informasi lengkap, sinopsis, skor, genre, studio, dan jadwal episode.`
-    const image = anime?.coverImage?.extraLarge ?? anime?.coverImage?.large ?? undefined
+    const image =
+      anime?.coverImage.extraLarge ?? anime?.coverImage.large ?? undefined
     return {
       meta: [
         { title: `${title} — AnimeSeasons` },
         { name: 'description', content: description },
-        { property: 'og:title', content: `${title} — AnimeSeasons (${seasonLabel})` },
+        {
+          property: 'og:title',
+          content: `${title} — AnimeSeasons (${seasonLabel})`,
+        },
         { property: 'og:description', content: description },
         ...(image ? [{ property: 'og:image' as const, content: image }] : []),
       ],
@@ -65,13 +73,25 @@ function DetailRoute() {
   })
 
   // A non-numeric /:id can't be a real AniList title — don't fire a doomed fetch.
-  if (!validId) return <DetailError error={new Error(`Invalid anime id: ${params.id}`)} />
-  if (error) return <DetailError error={error as Error} />
-  if (isPending || !data) return <DetailPending />
+  if (!validId)
+    return <DetailError error={new Error(`Invalid anime id: ${params.id}`)} />
+  if (error) return <DetailError error={error} />
+  if (isPending) return <DetailPending />
   return <AnimeDetailModal detail={data} onClose={close} />
 }
 
-function ModalShell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+function ModalShell({
+  children,
+  onClose,
+}: {
+  children: React.ReactNode
+  onClose: () => void
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Esc, scroll-lock, focus-trap, and focus-restore — see useDialog.
+  useDialog(containerRef, onClose)
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
@@ -84,7 +104,11 @@ function ModalShell({ children, onClose }: { children: React.ReactNode; onClose:
         onClick={onClose}
         className="animate-fade-in absolute inset-0 cursor-default bg-black/75 backdrop-blur-sm"
       />
-      <div className="animate-sheet-up relative max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-t-2xl bg-surface ring-1 ring-border sm:animate-pop-in sm:rounded-2xl">
+      <div
+        ref={containerRef}
+        tabIndex={-1}
+        className="animate-sheet-up relative max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-t-2xl bg-surface outline-none ring-1 ring-border sm:animate-pop-in sm:rounded-2xl"
+      >
         {children}
       </div>
     </div>
@@ -124,7 +148,9 @@ function DetailError({ error }: { error: Error }) {
           ⚠️
         </span>
         <p className="text-lg font-semibold text-ink">Gagal memuat detail</p>
-        <p className="max-w-sm text-sm text-ink-subtle">Coba refresh halaman atau tunggu beberapa saat.</p>
+        <p className="max-w-sm text-sm text-ink-subtle">
+          Coba refresh halaman atau tunggu beberapa saat.
+        </p>
         <button
           type="button"
           onClick={close}

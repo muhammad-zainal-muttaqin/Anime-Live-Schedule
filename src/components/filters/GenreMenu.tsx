@@ -6,10 +6,23 @@ interface GenreMenuProps {
   selected: string[]
   onToggle: (genre: string) => void
   onClear: () => void
+  includeAdult: boolean
+  onAdultChange: (includeAdult: boolean) => void
 }
 
-/** Disclosure button + checkbox panel for the multi-select genre facet. */
-export function GenreMenu({ options, selected, onToggle, onClear }: GenreMenuProps) {
+/**
+ * Disclosure button + checkbox panel for the multi-select genre facet.
+ * The 16+ content toggle lives here too — it's a content facet, not a
+ * toolbar-level control.
+ */
+export function GenreMenu({
+  options,
+  selected,
+  onToggle,
+  onClear,
+  includeAdult,
+  onAdultChange,
+}: GenreMenuProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -19,13 +32,15 @@ export function GenreMenu({ options, selected, onToggle, onClear }: GenreMenuPro
   useEffect(() => {
     if (!open) return
     const onPointerDown = (e: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
+      if (rootRef.current && !rootRef.current.contains(e.target as Node))
+        setOpen(false)
     }
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [open])
 
-  const active = selected.length > 0
+  const badgeCount = selected.length + (includeAdult ? 1 : 0)
+  const active = badgeCount > 0
 
   return (
     <div ref={rootRef} className="relative">
@@ -36,14 +51,16 @@ export function GenreMenu({ options, selected, onToggle, onClear }: GenreMenuPro
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
         className={`flex h-9 items-center gap-1.5 rounded-lg bg-surface px-3 text-sm font-medium ring-1 transition hover:ring-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring ${
-          active ? 'text-ink ring-accent-line' : 'text-ink-muted ring-border hover:text-ink'
+          active
+            ? 'text-ink ring-accent-line'
+            : 'text-ink-muted ring-border hover:text-ink'
         }`}
       >
         <Tags aria-hidden className="h-4 w-4" />
         Genre
         {active ? (
           <span className="rounded-full bg-accent-soft px-1.5 text-xs font-semibold text-accent tabular-nums">
-            {selected.length}
+            {badgeCount}
           </span>
         ) : null}
         <ChevronDown
@@ -67,7 +84,7 @@ export function GenreMenu({ options, selected, onToggle, onClear }: GenreMenuPro
         >
           <div className="flex items-center justify-between px-2.5 pb-1.5 pt-1">
             <p className="text-xs font-semibold text-ink-subtle">Pilih genre</p>
-            {active ? (
+            {selected.length > 0 ? (
               <button
                 type="button"
                 onClick={onClear}
@@ -77,34 +94,86 @@ export function GenreMenu({ options, selected, onToggle, onClear }: GenreMenuPro
               </button>
             ) : null}
           </div>
-          <div className="max-h-72 overflow-y-auto">
-            {options.length === 0 ? (
-              <p className="px-2.5 py-2 text-sm text-ink-subtle">Tidak ada genre di hasil ini.</p>
-            ) : (
-              options.map(({ genre, count }) => {
-                const checked = selected.includes(genre)
-                return (
-                  <label
-                    key={genre}
-                    className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition hover:bg-white/5"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => onToggle(genre)}
-                      className="h-4 w-4 shrink-0 accent-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
-                    />
-                    <span className={`flex-1 ${checked ? 'font-medium text-ink' : 'text-ink-muted'}`}>
-                      {genre}
-                    </span>
-                    <span className="text-xs text-ink-subtle tabular-nums">{count}</span>
-                  </label>
-                )
-              })
-            )}
+          <div className="max-h-64 overflow-y-auto">
+            <GenreList
+              options={options}
+              selected={selected}
+              onToggle={onToggle}
+            />
+          </div>
+          <div className="mt-1.5 border-t border-border pt-1.5">
+            <AdultToggleRow checked={includeAdult} onChange={onAdultChange} />
           </div>
         </div>
       ) : null}
     </div>
+  )
+}
+
+/** Checkbox rows for the genre facet — shared by the popover and the mobile sheet. */
+export function GenreList({
+  options,
+  selected,
+  onToggle,
+}: Pick<GenreMenuProps, 'options' | 'selected' | 'onToggle'>) {
+  if (options.length === 0) {
+    return (
+      <p className="px-2.5 py-2 text-sm text-ink-subtle">
+        Tidak ada genre di hasil ini.
+      </p>
+    )
+  }
+  return (
+    <>
+      {options.map(({ genre, count }) => {
+        const checked = selected.includes(genre)
+        return (
+          <label
+            key={genre}
+            className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition hover:bg-white/5"
+          >
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={() => onToggle(genre)}
+              className="h-4 w-4 shrink-0 accent-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
+            />
+            <span
+              className={`flex-1 ${checked ? 'font-medium text-ink' : 'text-ink-muted'}`}
+            >
+              {genre}
+            </span>
+            <span className="text-xs text-ink-subtle tabular-nums">
+              {count}
+            </span>
+          </label>
+        )
+      })}
+    </>
+  )
+}
+
+/** The 16+ content switch — shared by the genre popover and the mobile sheet. */
+export function AdultToggleRow({
+  checked,
+  onChange,
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition select-none hover:bg-white/5">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 shrink-0 accent-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
+      />
+      <span
+        className={`flex-1 ${checked ? 'font-medium text-ink' : 'text-ink-muted'}`}
+      >
+        Tampilkan konten 16+
+      </span>
+    </label>
   )
 }

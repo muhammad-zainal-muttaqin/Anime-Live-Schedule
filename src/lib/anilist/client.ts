@@ -9,10 +9,16 @@
  * (on-demand detail + cold-season fallback), both of which use non-blocked IPs.
  */
 import { DETAIL_QUERY, SEASONAL_QUERY } from '#/lib/anilist/queries'
-import { seasonToApi, type Season } from '#/lib/anilist/season'
+import { seasonToApi } from '#/lib/anilist/season'
+import type { Season } from '#/lib/anilist/season'
 import { truncatePlain } from '#/lib/filter'
 import { stripHtml } from '#/lib/format'
-import type { AnimeDetail, AnimeMedia, PageInfo, SeasonalResult } from '#/lib/anilist/types'
+import type {
+  AnimeDetail,
+  AnimeMedia,
+  PageInfo,
+  SeasonalResult,
+} from '#/lib/anilist/types'
 
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
 const PER_PAGE = 50
@@ -40,7 +46,10 @@ export async function anilistGraphQL<T>(
     try {
       res = await fetch(ANILIST_ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
         body: JSON.stringify({ query, variables }),
       })
     } catch (err) {
@@ -62,7 +71,7 @@ export async function anilistGraphQL<T>(
       throw new Error(`AniList request failed with status ${res.status}`)
     }
 
-    const json = (await res.json()) as GraphQLResponse<T>
+    const json: GraphQLResponse<T> = JSON.parse(await res.text())
     if (json.errors?.length) {
       throw new Error(json.errors[0]?.message ?? 'AniList GraphQL error')
     }
@@ -72,11 +81,16 @@ export async function anilistGraphQL<T>(
     return json.data
   }
 
-  throw lastError instanceof Error ? lastError : new Error('AniList request failed')
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('AniList request failed')
 }
 
 /** Fetch and page an entire season into one result object. */
-export async function fetchSeasonalPaged(season: Season, year: number): Promise<SeasonalResult> {
+export async function fetchSeasonalPaged(
+  season: Season,
+  year: number,
+): Promise<SeasonalResult> {
   const apiSeason = seasonToApi(season)
   const media: AnimeMedia[] = []
   let pageInfo: PageInfo = {
@@ -89,16 +103,22 @@ export async function fetchSeasonalPaged(season: Season, year: number): Promise<
 
   let page = 1
   do {
-    const payload = await anilistGraphQL<{ Page: { pageInfo: PageInfo; media: AnimeMedia[] } }>(
-      SEASONAL_QUERY,
-      { season: apiSeason, seasonYear: year, page, perPage: PER_PAGE },
-    )
+    const payload = await anilistGraphQL<{
+      Page: { pageInfo: PageInfo; media: AnimeMedia[] }
+    }>(SEASONAL_QUERY, {
+      season: apiSeason,
+      seasonYear: year,
+      page,
+      perPage: PER_PAGE,
+    })
     // Season snapshots only need a synopsis preview — truncating here keeps
     // the KV payload and SSR-dehydrated HTML small (detail fetches full text).
     media.push(
       ...payload.Page.media.map((m) => ({
         ...m,
-        description: m.description ? truncatePlain(stripHtml(m.description)) : null,
+        description: m.description
+          ? truncatePlain(stripHtml(m.description))
+          : null,
       })),
     )
     pageInfo = payload.Page.pageInfo
@@ -111,6 +131,8 @@ export async function fetchSeasonalPaged(season: Season, year: number): Promise<
 
 /** Fetch the full detail for a single title. */
 export async function fetchAnimeDetail(id: number): Promise<AnimeDetail> {
-  const payload = await anilistGraphQL<{ Media: AnimeDetail }>(DETAIL_QUERY, { id })
+  const payload = await anilistGraphQL<{ Media: AnimeDetail }>(DETAIL_QUERY, {
+    id,
+  })
   return payload.Media
 }

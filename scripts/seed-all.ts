@@ -17,11 +17,15 @@ import {
   MIN_YEAR,
   SEASONS,
   getMaxYear,
-  seasonToApi
-  
+  seasonToApi,
 } from '../src/lib/anilist/season.ts'
-import type {Season} from '../src/lib/anilist/season.ts';
-import { altTitles, pickTitle, stripHtml, truncatePlain } from '../src/lib/text.ts'
+import type { Season } from '../src/lib/anilist/season.ts'
+import {
+  altTitles,
+  pickTitle,
+  stripHtml,
+  truncatePlain,
+} from '../src/lib/text.ts'
 
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
 const PER_PAGE = 50
@@ -52,7 +56,10 @@ async function anilistGraphQL(variables: Record<string, unknown>): Promise<{
   for (let attempt = 1; attempt <= 4; attempt++) {
     const res = await fetch(ANILIST_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
       body: JSON.stringify({ query: SEASONAL_QUERY, variables }),
     })
     if (res.status === 429 || res.status >= 500) {
@@ -61,10 +68,10 @@ async function anilistGraphQL(variables: Record<string, unknown>): Promise<{
       continue
     }
     if (!res.ok) throw new Error(`AniList ${res.status}`)
-    const json = (await res.json()) as {
+    const json: {
       data?: { Page: { pageInfo: { hasNextPage: boolean }; media: unknown[] } }
       errors?: Array<{ message: string }>
-    }
+    } = JSON.parse(await res.text())
     if (json.errors?.length) throw new Error(json.errors[0].message)
     return json.data!.Page
   }
@@ -77,14 +84,21 @@ async function fetchSeason(season: Season, year: number) {
   let pageInfo = { hasNextPage: false }
   let page = 1
   do {
-    const p = await anilistGraphQL({ season: apiSeason, seasonYear: year, page, perPage: PER_PAGE })
+    const p = await anilistGraphQL({
+      season: apiSeason,
+      seasonYear: year,
+      page,
+      perPage: PER_PAGE,
+    })
     // Truncate synopsis previews exactly like src/lib/anilist/client.ts does, so
     // seeded snapshots match what the /seed page and browser fallback produce.
     for (const raw of p.media) {
       const m = raw as { description?: string | null }
       media.push({
         ...m,
-        description: m.description ? truncatePlain(stripHtml(m.description)) : null,
+        description: m.description
+          ? truncatePlain(stripHtml(m.description))
+          : null,
       })
     }
     pageInfo = p.pageInfo
@@ -98,7 +112,10 @@ async function putKv(key: string, value: unknown): Promise<void> {
   const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/storage/kv/namespaces/${NAMESPACE_ID}/values/${encoded}`
   const res = await fetch(url, {
     method: 'PUT',
-    headers: { Authorization: `Bearer ${API_TOKEN}`, 'Content-Type': 'text/plain' },
+    headers: {
+      Authorization: `Bearer ${API_TOKEN}`,
+      'Content-Type': 'text/plain',
+    },
     body: JSON.stringify(value),
   })
   if (!res.ok) {
@@ -111,7 +128,10 @@ async function putKv(key: string, value: unknown): Promise<void> {
 async function deleteKv(key: string): Promise<void> {
   const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/storage/kv/namespaces/${NAMESPACE_ID}/values/${encodeURIComponent(key)}`
   try {
-    await fetch(url, { method: 'DELETE', headers: { Authorization: `Bearer ${API_TOKEN}` } })
+    await fetch(url, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${API_TOKEN}` },
+    })
   } catch {
     // ignore — cleanup is optional
   }
@@ -131,7 +151,11 @@ interface IndexEntry {
 
 type IndexMedia = {
   id: number
-  title: { romaji?: string | null; english?: string | null; native?: string | null }
+  title: {
+    romaji?: string | null
+    english?: string | null
+    native?: string | null
+  }
   synonyms?: string[] | null
   coverImage?: { large?: string | null } | null
   format?: string | null
@@ -172,7 +196,9 @@ async function writeSearchIndex(
 
 async function main() {
   if (!DRY_RUN && (!ACCOUNT_ID || !API_TOKEN)) {
-    console.error('Missing CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN in env.')
+    console.error(
+      'Missing CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN in env.',
+    )
     process.exit(1)
   }
 
@@ -188,7 +214,10 @@ async function main() {
   )
 
   // Accumulate results in memory so we can build the search index at the end.
-  const allResults = new Map<string, { season: string; year: number; media: unknown[] }>()
+  const allResults = new Map<
+    string,
+    { season: string; year: number; media: unknown[] }
+  >()
 
   let written = 0
   let empty = 0
@@ -211,7 +240,9 @@ async function main() {
       console.log(`  ✓ ${season} ${year} — ${result.media.length} titles`)
     } catch (err) {
       failed++
-      console.error(`  ✗ ${season} ${year} — ${err instanceof Error ? err.message : err}`)
+      console.error(
+        `  ✗ ${season} ${year} — ${err instanceof Error ? err.message : err}`,
+      )
     }
   }
 

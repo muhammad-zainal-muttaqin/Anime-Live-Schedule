@@ -1,5 +1,12 @@
-import { useMemo } from 'react'
-import { Link, Outlet, createFileRoute, redirect, stripSearchParams, useRouter } from '@tanstack/react-router'
+import { useMemo, useRef } from 'react'
+import {
+  Link,
+  Outlet,
+  createFileRoute,
+  redirect,
+  stripSearchParams,
+  useRouter,
+} from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { SearchX, Search, Tv, X } from 'lucide-react'
 import { AnimeCard } from '#/components/AnimeCard'
@@ -11,8 +18,8 @@ import {
   SEASON_LABELS,
   getCurrentSeason,
   isSeason,
-  type Season,
 } from '#/lib/anilist/season'
+import type { Season } from '#/lib/anilist/season'
 import {
   FILTER_DEFAULTS,
   RESET_PATCH,
@@ -22,49 +29,67 @@ import {
   parseSearch,
   resolveFilters,
   withGenreToggled,
-  type SeasonSearch,
 } from '#/lib/filter'
+import type { SeasonSearch } from '#/lib/filter'
 import { SeasonYearPicker } from '#/components/SeasonYearPicker'
+import { useHeightVar } from '#/lib/hooks'
 import { seasonalQueryOptions } from '#/lib/queries'
 
 export const Route = createFileRoute('/$season/$year')({
   validateSearch: parseSearch,
   search: { middlewares: [stripSearchParams(FILTER_DEFAULTS)] },
   head: ({ params }) => {
-    const season = isSeason(params.season) ? (params.season as Season) : 'summer'
+    const season = isSeason(params.season) ? params.season : 'summer'
     const year = params.year
     const label = `${SEASON_LABELS[season]} ${year}`
     return {
       meta: [
         { title: `${label} — AnimeSeasons` },
-        { name: 'description', content: `Jadwal tayang anime ${label} — daftar judul lengkap dengan informasi episode, studio, genre, skor, dan jadwal tayang episode terbaru. Data dari AniList.` },
+        {
+          name: 'description',
+          content: `Jadwal tayang anime ${label} — daftar judul lengkap dengan informasi episode, studio, genre, skor, dan jadwal tayang episode terbaru. Data dari AniList.`,
+        },
         { property: 'og:title', content: `${label} — AnimeSeasons` },
-        { property: 'og:description', content: `Jadwal tayang anime ${label}. Lengkap dengan jadwal episode terbaru, skor, genre, dan studio.` },
+        {
+          property: 'og:description',
+          content: `Jadwal tayang anime ${label}. Lengkap dengan jadwal episode terbaru, skor, genre, dan studio.`,
+        },
       ],
     }
   },
   loader: async ({ context, params }) => {
     const year = Number(params.year)
-    if (!isSeason(params.season) || !Number.isInteger(year) || year < 1940 || year > 2100) {
+    if (
+      !isSeason(params.season) ||
+      !Number.isInteger(year) ||
+      year < 1940 ||
+      year > 2100
+    ) {
       const current = getCurrentSeason()
       throw redirect({
         to: '/$season/$year',
         params: { season: current.season, year: String(current.year) },
       })
     }
-    await context.queryClient.ensureQueryData(seasonalQueryOptions(params.season, year))
+    await context.queryClient.ensureQueryData(
+      seasonalQueryOptions(params.season, year),
+    )
   },
   pendingComponent: SeasonPending,
   errorComponent: SeasonError,
   component: SeasonPage,
 })
 
-const GRID = 'grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
+const GRID =
+  'grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
 const CONTAINER = 'mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8'
 
 function useRouteSeason(): { season: Season | undefined; year: string } {
   const params = Route.useParams()
-  return { season: isSeason(params.season) ? params.season : undefined, year: params.year }
+  return {
+    season: isSeason(params.season) ? params.season : undefined,
+    year: params.year,
+  }
 }
 
 /** Shared frame: season-scoped ambient + brand + sticky season switcher. */
@@ -77,6 +102,11 @@ function PageShell({
   year: string
   children: React.ReactNode
 }) {
+  const seasonBarRef = useRef<HTMLDivElement>(null)
+  // Publish the sticky season-bar height so the filter toolbar can stick just
+  // below it (see the sticky wrapper in SeasonPage).
+  useHeightVar(seasonBarRef, '--season-bar-h')
+
   return (
     <div className="season-ambient min-h-screen" data-season={season}>
       <div className={`${CONTAINER} pt-6`}>
@@ -88,9 +118,16 @@ function PageShell({
           >
             <Tv className="h-5 w-5" />
           </Link>
-          <Link to="/" className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring rounded">
-            <h1 className="text-lg font-bold tracking-tight text-ink">AnimeSeasons</h1>
-            <p className="text-xs text-ink-subtle">Jadwal tayang anime per musim · data AniList</p>
+          <Link
+            to="/"
+            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring rounded"
+          >
+            <h1 className="text-lg font-bold tracking-tight text-ink">
+              AnimeSeasons
+            </h1>
+            <p className="text-xs text-ink-subtle">
+              Jadwal tayang anime per musim · data AniList
+            </p>
           </Link>
           <Link
             to="/search"
@@ -102,9 +139,14 @@ function PageShell({
         </header>
       </div>
 
-      <div className="sticky top-0 z-30 mt-5 border-y border-border bg-canvas/75 backdrop-blur-md">
+      <div
+        ref={seasonBarRef}
+        className="sticky top-0 z-30 mt-5 border-y border-border bg-canvas/75 backdrop-blur-md"
+      >
         <div className={`${CONTAINER} py-3`}>
-          {season ? <SeasonYearPicker season={season} year={Number(year)} /> : null}
+          {season ? (
+            <SeasonYearPicker season={season} year={Number(year)} />
+          ) : null}
         </div>
       </div>
 
@@ -122,11 +164,15 @@ function SeasonPage() {
   const navigate = Route.useNavigate()
 
   const filters = useMemo(() => resolveFilters(search), [search])
-  const filtered = useMemo(() => applyFilters(data.media, filters), [data.media, filters])
+  const filtered = useMemo(
+    () => applyFilters(data.media, filters),
+    [data.media, filters],
+  )
   // Facet options reflect the other active filters, but not the genre picks
   // themselves — so a checked genre never erases its own siblings.
   const genreOptions = useMemo(
-    () => deriveGenreCounts(applyFilters(data.media, { ...filters, genres: [] })),
+    () =>
+      deriveGenreCounts(applyFilters(data.media, { ...filters, genres: [] })),
     [data.media, filters],
   )
 
@@ -143,19 +189,25 @@ function SeasonPage() {
     <PageShell season={season} year={year}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-ink">
-          <span aria-hidden className="text-xl">{SEASON_EMOJI[s]}</span>
+          <span aria-hidden className="text-xl">
+            {SEASON_EMOJI[s]}
+          </span>
           {SEASON_LABELS[s]} {numericYear}
         </h2>
         <p aria-live="polite" className="text-sm text-ink-subtle">
           {filtering ? (
             <>
-              <span className="font-semibold text-ink-muted tabular-nums">{filtered.length}</span>
+              <span className="font-semibold text-ink-muted tabular-nums">
+                {filtered.length}
+              </span>
               {' dari '}
               <span className="tabular-nums">{data.media.length}</span> judul
             </>
           ) : (
             <>
-              <span className="font-semibold text-ink-muted tabular-nums">{data.media.length}</span>{' '}
+              <span className="font-semibold text-ink-muted tabular-nums">
+                {data.media.length}
+              </span>{' '}
               judul
             </>
           )}
@@ -164,11 +216,27 @@ function SeasonPage() {
 
       {data.media.length > 0 ? (
         <div className="mt-4">
-          <FilterBar filters={filters} genreOptions={genreOptions} onPatch={onPatch} />
+          {/* Sticks just below the season bar so filters stay reachable deep in
+              a long grid. No backdrop-blur here: it renders the fixed mobile
+              sheet, and backdrop-filter would trap it in a containing block. */}
+          <div
+            className="sticky z-20 -mx-4 bg-canvas/90 px-4 py-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+            style={{ top: 'var(--season-bar-h, 3.75rem)' }}
+          >
+            <FilterBar
+              filters={filters}
+              genreOptions={genreOptions}
+              resultCount={filtered.length}
+              onPatch={onPatch}
+            />
+          </div>
           {filtering ? (
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
               {filters.q ? (
-                <FilterChip label={`“${filters.q}”`} onRemove={() => onPatch({ q: '' })} />
+                <FilterChip
+                  label={`“${filters.q}”`}
+                  onRemove={() => onPatch({ q: '' })}
+                />
               ) : null}
               {filters.format !== 'all' ? (
                 <FilterChip
@@ -180,9 +248,17 @@ function SeasonPage() {
                 <FilterChip
                   key={genre}
                   label={genre}
-                  onRemove={() => onPatch({ genre: withGenreToggled(filters, genre) })}
+                  onRemove={() =>
+                    onPatch({ genre: withGenreToggled(filters, genre) })
+                  }
                 />
               ))}
+              {filters.includeAdult ? (
+                <FilterChip
+                  label="16+"
+                  onRemove={() => onPatch({ includeAdult: undefined })}
+                />
+              ) : null}
               <button
                 type="button"
                 onClick={() => onPatch(RESET_PATCH)}
@@ -200,7 +276,10 @@ function SeasonPage() {
       ) : filtered.length === 0 ? (
         <NoResultsState onReset={() => onPatch(RESET_PATCH)} />
       ) : filters.view === 'list' ? (
-        <div key="list" className="animate-fade-in mt-4 flex flex-col divide-y divide-border">
+        <div
+          key="list"
+          className="animate-fade-in mt-4 flex flex-col divide-y divide-border"
+        >
           {filtered.map((anime) => (
             <AnimeListRow key={anime.id} anime={anime} season={s} year={year} />
           ))}
@@ -219,7 +298,13 @@ function SeasonPage() {
   )
 }
 
-function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+function FilterChip({
+  label,
+  onRemove,
+}: {
+  label: string
+  onRemove: () => void
+}) {
   return (
     <button
       type="button"
@@ -239,10 +324,12 @@ function EmptyState() {
       <span className="mb-1 grid h-12 w-12 place-items-center rounded-2xl bg-surface text-2xl ring-1 ring-border">
         📭
       </span>
-      <p className="text-lg font-semibold text-ink">Belum ada judul untuk musim ini</p>
+      <p className="text-lg font-semibold text-ink">
+        Belum ada judul untuk musim ini
+      </p>
       <p className="text-sm text-pretty text-ink-subtle">
-        Coba pilih musim atau tahun lain — data untuk musim mendatang biasanya muncul beberapa
-        bulan sebelum tayang.
+        Coba pilih musim atau tahun lain — data untuk musim mendatang biasanya
+        muncul beberapa bulan sebelum tayang.
       </p>
     </div>
   )
@@ -254,7 +341,9 @@ function NoResultsState({ onReset }: { onReset: () => void }) {
       <span className="mb-1 grid h-12 w-12 place-items-center rounded-2xl bg-surface ring-1 ring-border">
         <SearchX aria-hidden className="h-6 w-6 text-ink-subtle" />
       </span>
-      <p className="text-lg font-semibold text-ink">Tidak ada judul yang cocok</p>
+      <p className="text-lg font-semibold text-ink">
+        Tidak ada judul yang cocok
+      </p>
       <p className="text-sm text-pretty text-ink-subtle">
         Coba ubah kata kunci atau kurangi filter yang aktif.
       </p>
@@ -277,13 +366,15 @@ function SeasonPending() {
         <div className="h-8 w-52 animate-pulse rounded-lg bg-surface" />
         <div className="h-4 w-16 animate-pulse rounded bg-surface" />
       </div>
-      {/* Toolbar placeholder mirrors the FilterBar footprint. */}
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <div className="h-9 w-64 animate-pulse rounded-xl bg-surface" />
+      {/* Toolbar placeholder mirrors the FilterBar footprint per breakpoint. */}
+      <div className="mt-4 flex items-center gap-2">
+        <div className="h-9 flex-1 animate-pulse rounded-lg bg-surface sm:hidden" />
+        <div className="h-9 w-20 animate-pulse rounded-lg bg-surface sm:hidden" />
+        <div className="hidden h-9 w-64 animate-pulse rounded-xl bg-surface sm:block" />
         <div className="hidden h-9 flex-1 animate-pulse rounded-lg bg-surface sm:block" />
-        <div className="h-9 w-24 animate-pulse rounded-lg bg-surface" />
-        <div className="h-9 w-36 animate-pulse rounded-lg bg-surface" />
-        <div className="h-9 w-20 animate-pulse rounded-xl bg-surface" />
+        <div className="hidden h-9 w-24 animate-pulse rounded-lg bg-surface sm:block" />
+        <div className="hidden h-9 w-36 animate-pulse rounded-lg bg-surface sm:block" />
+        <div className="hidden h-9 w-20 animate-pulse rounded-xl bg-surface sm:block" />
       </div>
       <div className={`mt-5 ${GRID}`}>
         {Array.from({ length: 18 }).map((_, i) => (
@@ -308,8 +399,12 @@ function SeasonError({ error }: { error: Error }) {
         <span className="grid h-12 w-12 place-items-center rounded-2xl bg-surface text-2xl ring-1 ring-border">
           ⚠️
         </span>
-        <p className="text-lg font-semibold text-ink">Gagal memuat data dari AniList</p>
-        <p className="text-sm text-ink-subtle">Coba refresh halaman atau tunggu beberapa saat.</p>
+        <p className="text-lg font-semibold text-ink">
+          Gagal memuat data dari AniList
+        </p>
+        <p className="text-sm text-ink-subtle">
+          Coba refresh halaman atau tunggu beberapa saat.
+        </p>
         <button
           type="button"
           onClick={() => router.invalidate()}

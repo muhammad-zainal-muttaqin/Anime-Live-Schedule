@@ -13,11 +13,15 @@ import { SEASONAL_QUERY } from '../src/lib/anilist/queries.ts'
 import {
   getCurrentSeason,
   shiftSeason,
-  seasonToApi
-  
+  seasonToApi,
 } from '../src/lib/anilist/season.ts'
-import type {Season} from '../src/lib/anilist/season.ts';
-import { altTitles, pickTitle, stripHtml, truncatePlain } from '../src/lib/text.ts'
+import type { Season } from '../src/lib/anilist/season.ts'
+import {
+  altTitles,
+  pickTitle,
+  stripHtml,
+  truncatePlain,
+} from '../src/lib/text.ts'
 
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
 const PER_PAGE = 50
@@ -50,7 +54,10 @@ async function anilistGraphQL(variables: Record<string, unknown>): Promise<{
   for (let attempt = 1; attempt <= 4; attempt++) {
     const res = await fetch(ANILIST_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
       body: JSON.stringify({ query: SEASONAL_QUERY, variables }),
     })
     if (res.status === 429 || res.status >= 500) {
@@ -59,10 +66,10 @@ async function anilistGraphQL(variables: Record<string, unknown>): Promise<{
       continue
     }
     if (!res.ok) throw new Error(`AniList ${res.status}`)
-    const json = (await res.json()) as {
+    const json: {
       data?: { Page: { pageInfo: { hasNextPage: boolean }; media: unknown[] } }
       errors?: Array<{ message: string }>
-    }
+    } = JSON.parse(await res.text())
     if (json.errors?.length) throw new Error(json.errors[0].message)
     return json.data!.Page
   }
@@ -75,12 +82,19 @@ async function fetchSeason(season: Season, year: number) {
   let pageInfo = { hasNextPage: false }
   let page = 1
   do {
-    const p = await anilistGraphQL({ season: apiSeason, seasonYear: year, page, perPage: PER_PAGE })
+    const p = await anilistGraphQL({
+      season: apiSeason,
+      seasonYear: year,
+      page,
+      perPage: PER_PAGE,
+    })
     for (const raw of p.media) {
       const m = raw as { description?: string | null }
       media.push({
         ...m,
-        description: m.description ? truncatePlain(stripHtml(m.description)) : null,
+        description: m.description
+          ? truncatePlain(stripHtml(m.description))
+          : null,
       })
     }
     pageInfo = p.pageInfo
@@ -94,7 +108,10 @@ async function putKv(key: string, value: unknown): Promise<void> {
   const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/storage/kv/namespaces/${NAMESPACE_ID}/values/${encoded}?expiration_ttl=${KV_TTL_SECONDS}`
   const res = await fetch(url, {
     method: 'PUT',
-    headers: { Authorization: `Bearer ${API_TOKEN}`, 'Content-Type': 'text/plain' },
+    headers: {
+      Authorization: `Bearer ${API_TOKEN}`,
+      'Content-Type': 'text/plain',
+    },
     body: JSON.stringify(value),
   })
   if (!res.ok) {
@@ -119,7 +136,10 @@ async function putKvPersist(key: string, value: unknown): Promise<void> {
   const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/storage/kv/namespaces/${NAMESPACE_ID}/values/${encoded}`
   const res = await fetch(url, {
     method: 'PUT',
-    headers: { Authorization: `Bearer ${API_TOKEN}`, 'Content-Type': 'text/plain' },
+    headers: {
+      Authorization: `Bearer ${API_TOKEN}`,
+      'Content-Type': 'text/plain',
+    },
     body: JSON.stringify(value),
   })
   if (!res.ok) {
@@ -133,7 +153,9 @@ async function getKv(key: string): Promise<unknown> {
   const encoded = encodeURIComponent(key)
   const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/storage/kv/namespaces/${NAMESPACE_ID}/values/${encoded}`
   try {
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${API_TOKEN}` } })
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${API_TOKEN}` },
+    })
     if (!res.ok) return null
     return res.json()
   } catch {
@@ -155,7 +177,11 @@ interface IndexEntry {
 
 type IndexMedia = {
   id: number
-  title: { romaji?: string | null; english?: string | null; native?: string | null }
+  title: {
+    romaji?: string | null
+    english?: string | null
+    native?: string | null
+  }
   synonyms?: string[] | null
   coverImage?: { large?: string | null } | null
   format?: string | null
@@ -201,7 +227,9 @@ async function writeSearchIndex(
   }
 
   // Keep entries from untouched seasons; replace updated seasons with fresh data.
-  const kept = existing.filter((e) => !updatedSeasons.has(`${e.season}:${e.year}`))
+  const kept = existing.filter(
+    (e) => !updatedSeasons.has(`${e.season}:${e.year}`),
+  )
   const merged = [...kept, ...fresh]
   console.log(
     `Search index: ${existing.length} → ${merged.length} entri ` +
@@ -215,7 +243,9 @@ async function writeSearchIndex(
 
 async function main() {
   if (!DRY_RUN && (!ACCOUNT_ID || !API_TOKEN)) {
-    console.error('Missing CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN in env.')
+    console.error(
+      'Missing CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN in env.',
+    )
     process.exit(1)
   }
 
@@ -225,7 +255,10 @@ async function main() {
       (DRY_RUN ? '  [DRY RUN, no writes]' : ''),
   )
 
-  const allResults = new Map<string, { season: string; year: number; media: unknown[] }>()
+  const allResults = new Map<
+    string,
+    { season: string; year: number; media: unknown[] }
+  >()
 
   let written = 0
   let failed = 0
@@ -243,7 +276,9 @@ async function main() {
       console.log(`✓ ${season} ${year} — ${result.media.length} judul`)
     } catch (err) {
       failed++
-      console.error(`✗ ${season} ${year} — ${err instanceof Error ? err.message : err}`)
+      console.error(
+        `✗ ${season} ${year} — ${err instanceof Error ? err.message : err}`,
+      )
     }
   }
 

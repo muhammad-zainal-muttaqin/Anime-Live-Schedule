@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { fetchSeasonalPaged } from '#/lib/anilist/client'
-import { getMaxYear, isSeason, MIN_YEAR, type Season } from '#/lib/anilist/season'
+import { getMaxYear, isSeason, MIN_YEAR } from '#/lib/anilist/season'
+import type { Season } from '#/lib/anilist/season'
 import type { SeasonalResult } from '#/lib/anilist/types'
 
 /**
@@ -62,7 +63,7 @@ async function kvGetJson<T>(key: string): Promise<T | null> {
   const cache = await getCache()
   if (!cache) return null
   try {
-    return (await cache.get(key, 'json')) as T | null
+    return await cache.get<T>(key, 'json')
   } catch {
     return null
   }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { CalendarClock, ExternalLink, Star, X } from 'lucide-react'
 import type { AnimeDetail } from '#/lib/anilist/types'
 import {
@@ -12,7 +12,7 @@ import {
   STATUS_TONE,
   stripHtml,
 } from '#/lib/format'
-import { useNow } from '#/lib/hooks'
+import { useDialog, useNow } from '#/lib/hooks'
 
 interface AnimeDetailModalProps {
   detail: AnimeDetail
@@ -21,6 +21,7 @@ interface AnimeDetailModalProps {
 
 export function AnimeDetailModal({ detail, onClose }: AnimeDetailModalProps) {
   const closeRef = useRef<HTMLButtonElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const now = useNow()
   const jsonLd = useMemo(
     () =>
@@ -28,13 +29,13 @@ export function AnimeDetailModal({ detail, onClose }: AnimeDetailModalProps) {
         '@context': 'https://schema.org',
         '@type': 'TVSeries',
         name: pickTitle(detail.title),
-        description: stripHtml(detail.description)?.slice(0, 500),
+        description: stripHtml(detail.description).slice(0, 500),
         image: detail.coverImage.extraLarge ?? detail.coverImage.large,
         genre: detail.genres,
-        datePublished: detail.startDate?.year
+        datePublished: detail.startDate.year
           ? `${detail.startDate.year}${detail.startDate.month ? `-${String(detail.startDate.month).padStart(2, '0')}` : ''}${detail.startDate.day ? `-${String(detail.startDate.day).padStart(2, '0')}` : ''}`
           : undefined,
-        aggregaterating: detail.averageScore
+        aggregateRating: detail.averageScore
           ? {
               '@type': 'AggregateRating',
               ratingValue: (detail.averageScore / 10).toFixed(1),
@@ -43,37 +44,28 @@ export function AnimeDetailModal({ detail, onClose }: AnimeDetailModalProps) {
               ratingCount: detail.popularity ?? 1,
             }
           : undefined,
-        ...(detail.studios?.nodes?.[0] ? { productionCompany: detail.studios.nodes[0].name } : {}),
+        ...(detail.studios.nodes[0]
+          ? { productionCompany: detail.studios.nodes[0].name }
+          : {}),
       }).replace(/</g, '\\u003C'),
     [detail],
   )
 
-  // Close on Escape, lock background scroll, and restore focus to the opener.
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    closeRef.current?.focus()
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prevOverflow
-      opener?.focus?.()
-    }
-  }, [onClose])
+  // Esc, scroll-lock, focus-trap, and focus-restore — see useDialog.
+  useDialog(containerRef, onClose, closeRef)
 
   const title = pickTitle(detail.title)
   const secondary = secondaryTitle(detail.title)
   const score = formatScore(detail.averageScore)
-  const cover = detail.coverImage.extraLarge ?? detail.coverImage.large ?? undefined
+  const cover =
+    detail.coverImage.extraLarge ?? detail.coverImage.large ?? undefined
   const description = stripHtml(detail.description)
   const airing = detail.nextAiringEpisode
   const studios = detail.studios.nodes.map((s) => s.name).join(', ')
   const startDate = formatFuzzyDate(detail.startDate)
-  const streamingLinks = detail.externalLinks.filter((l) => l.type === 'STREAMING')
+  const streamingLinks = detail.externalLinks.filter(
+    (l) => l.type === 'STREAMING',
+  )
 
   return (
     <div
@@ -82,7 +74,10 @@ export function AnimeDetailModal({ detail, onClose }: AnimeDetailModalProps) {
       aria-modal="true"
       aria-label={title}
     >
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLd }}
+      />
       <button
         type="button"
         aria-label="Tutup"
@@ -90,11 +85,18 @@ export function AnimeDetailModal({ detail, onClose }: AnimeDetailModalProps) {
         className="animate-fade-in absolute inset-0 cursor-default bg-black/75 backdrop-blur-sm"
       />
 
-      <div className="animate-sheet-up relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-surface ring-1 ring-border sm:animate-pop-in sm:rounded-2xl">
+      <div
+        ref={containerRef}
+        className="animate-sheet-up relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-surface ring-1 ring-border sm:animate-pop-in sm:rounded-2xl"
+      >
         {/* Banner */}
         <div className="relative h-36 bg-surface-2 sm:h-48">
           {detail.bannerImage ? (
-            <img src={detail.bannerImage} alt="" className="h-full w-full object-cover" />
+            <img
+              src={detail.bannerImage}
+              alt=""
+              className="h-full w-full object-cover"
+            />
           ) : (
             <div className="h-full w-full bg-gradient-to-br from-accent-soft to-surface-2" />
           )}
@@ -121,8 +123,12 @@ export function AnimeDetailModal({ detail, onClose }: AnimeDetailModalProps) {
               />
             ) : null}
             <div className="min-w-0 pt-16">
-              <h2 className="text-xl font-bold leading-tight text-ink">{title}</h2>
-              {secondary ? <p className="mt-0.5 text-sm text-ink-muted">{secondary}</p> : null}
+              <h2 className="text-xl font-bold leading-tight text-ink">
+                {title}
+              </h2>
+              {secondary ? (
+                <p className="mt-0.5 text-sm text-ink-muted">{secondary}</p>
+              ) : null}
               <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
                 <span className="inline-flex items-center gap-1.5">
                   <span
@@ -130,17 +136,23 @@ export function AnimeDetailModal({ detail, onClose }: AnimeDetailModalProps) {
                   />
                   {formatStatus(detail.status)}
                 </span>
-                <span aria-hidden className="text-ink-subtle">·</span>
+                <span aria-hidden className="text-ink-subtle">
+                  ·
+                </span>
                 <span>{formatFormat(detail.format)}</span>
                 {detail.episodes ? (
                   <>
-                    <span aria-hidden className="text-ink-subtle">·</span>
+                    <span aria-hidden className="text-ink-subtle">
+                      ·
+                    </span>
                     <span>{detail.episodes} eps</span>
                   </>
                 ) : null}
                 {score ? (
                   <>
-                    <span aria-hidden className="text-ink-subtle">·</span>
+                    <span aria-hidden className="text-ink-subtle">
+                      ·
+                    </span>
                     <span className="inline-flex items-center gap-1 text-amber-300">
                       <Star className="h-3 w-3 fill-amber-300" />
                       {score}
@@ -187,7 +199,10 @@ export function AnimeDetailModal({ detail, onClose }: AnimeDetailModalProps) {
           <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
             <Meta label="Studio" value={studios || null} />
             <Meta label="Mulai tayang" value={startDate} />
-            <Meta label="Durasi" value={detail.duration ? `${detail.duration} min` : null} />
+            <Meta
+              label="Durasi"
+              value={detail.duration ? `${detail.duration} min` : null}
+            />
           </dl>
 
           {/* Streaming + AniList links */}
