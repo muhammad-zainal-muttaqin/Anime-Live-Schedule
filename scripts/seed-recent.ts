@@ -304,8 +304,9 @@ async function main() {
   if (!DRY_RUN && !allResults.has(currentKey)) {
     console.error(
       `\nFATAL: musim berjalan (${jobs[0].season} ${jobs[0].year}) gagal di-seed ` +
-        `— KV tidak diperbarui (kemungkinan AniList 403 ke IP runner). ` +
-        `Data countdown akan basi sampai run berikutnya berhasil.`,
+        `— KV tidak diperbarui. Lihat error di atas (biasanya AniList 403 ke IP ` +
+        `runner, atau limit tulis KV harian Cloudflare). Countdown basi sampai ` +
+        `run berikutnya berhasil.`,
     )
     process.exit(1)
   }

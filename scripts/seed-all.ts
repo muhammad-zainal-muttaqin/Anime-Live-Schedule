@@ -260,7 +260,8 @@ async function main() {
   // so the failure is visible instead of a silent green run.
   if (!DRY_RUN && written === 0) {
     console.error(
-      '\nFATAL: 0 musim berhasil di-seed (kemungkinan AniList 403 ke IP ini). KV tidak diperbarui.',
+      '\nFATAL: 0 musim berhasil di-seed — lihat error di atas (biasanya AniList 403, ' +
+        'atau limit tulis KV harian Cloudflare). KV tidak diperbarui.',
     )
     process.exit(1)
   }
