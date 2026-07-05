@@ -30,6 +30,19 @@ import { seasonalQueryOptions } from '#/lib/queries'
 export const Route = createFileRoute('/$season/$year')({
   validateSearch: parseSearch,
   search: { middlewares: [stripSearchParams(FILTER_DEFAULTS)] },
+  head: ({ params }) => {
+    const season = isSeason(params.season) ? (params.season as Season) : 'summer'
+    const year = params.year
+    const label = `${SEASON_LABELS[season]} ${year}`
+    return {
+      meta: [
+        { title: `${label} — AnimeSeasons` },
+        { name: 'description', content: `Jadwal tayang anime ${label} — daftar judul lengkap dengan informasi episode, studio, genre, skor, dan jadwal tayang episode terbaru. Data dari AniList.` },
+        { property: 'og:title', content: `${label} — AnimeSeasons` },
+        { property: 'og:description', content: `Jadwal tayang anime ${label}. Lengkap dengan jadwal episode terbaru, skor, genre, dan studio.` },
+      ],
+    }
+  },
   loader: async ({ context, params }) => {
     const year = Number(params.year)
     if (!isSeason(params.season) || !Number.isInteger(year) || year < 1940 || year > 2100) {

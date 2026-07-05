@@ -2,8 +2,42 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { AnimeDetailModal } from '#/components/AnimeDetailModal'
 import { animeDetailQueryOptions } from '#/lib/queries'
+import { getSeasonalAnime } from '#/server/anilist'
+import { pickTitle } from '#/lib/format'
+import { isSeason, SEASON_LABELS, type Season } from '#/lib/anilist/season'
+import type { AnimeMedia } from '#/lib/anilist/types'
 
 export const Route = createFileRoute('/$season/$year/$id')({
+  loader: async ({ params }): Promise<{ anime: AnimeMedia | null; seasonLabel: string }> => {
+    const season = isSeason(params.season) ? (params.season as Season) : 'summer'
+    const year = Number(params.year)
+    const id = Number(params.id)
+    try {
+      const seasonal = await getSeasonalAnime({ data: { season, year } })
+      const anime = seasonal.media.find((m) => m.id === id) ?? null
+      return { anime, seasonLabel: `${SEASON_LABELS[season]} ${year}` }
+    } catch {
+      return { anime: null, seasonLabel: `${SEASON_LABELS[season]} ${year}` }
+    }
+  },
+  head: ({ params, loaderData }) => {
+    const anime = loaderData?.anime
+    const seasonLabel = loaderData?.seasonLabel ?? ''
+    const title = anime ? pickTitle(anime.title) : `Anime #${params.id}`
+    const description = anime?.description
+      ? anime.description
+      : `Detail anime dari ${seasonLabel} — lihat informasi lengkap, sinopsis, skor, genre, studio, dan jadwal episode.`
+    const image = anime?.coverImage?.extraLarge ?? anime?.coverImage?.large ?? undefined
+    return {
+      meta: [
+        { title: `${title} — AnimeSeasons` },
+        { name: 'description', content: description },
+        { property: 'og:title', content: `${title} — AnimeSeasons (${seasonLabel})` },
+        { property: 'og:description', content: description },
+        ...(image ? [{ property: 'og:image' as const, content: image }] : []),
+      ],
+    }
+  },
   component: DetailRoute,
 })
 
