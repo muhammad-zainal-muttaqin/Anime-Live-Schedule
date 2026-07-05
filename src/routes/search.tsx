@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { Search, Tv, X } from 'lucide-react'
-import { pickTitle } from '#/lib/format'
 import type { SearchIndexEntry } from '#/lib/anilist/types'
-import { searchAnime } from '#/server/anilist'
 
 export const Route = createFileRoute('/search')({
   component: SearchPage,
@@ -11,6 +9,18 @@ export const Route = createFileRoute('/search')({
 
 const CONTAINER = 'mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8'
 const GRID = 'grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
+
+let indexPromise: Promise<SearchIndexEntry[]> | null = null
+
+function loadIndex(): Promise<SearchIndexEntry[]> {
+  if (!indexPromise) {
+    indexPromise = fetch('/search-index.json').then((r) => {
+      if (!r.ok) throw new Error('Failed to load search index')
+      return r.json()
+    })
+  }
+  return indexPromise
+}
 
 function SearchPage() {
   const [q, setQ] = useState('')
@@ -25,17 +35,24 @@ function SearchPage() {
       setResults([])
       return
     }
+
     setLoading(true)
     timer.current = setTimeout(async () => {
       try {
-        const res = await searchAnime({ data: { q: trimmed } })
-        setResults(res ?? [])
+        const index = await loadIndex()
+        const lower = trimmed.toLowerCase()
+        const filtered = index.filter(
+          (entry) =>
+            entry.title.toLowerCase().includes(lower) ||
+            String(entry.year).includes(trimmed),
+        ).slice(0, 50)
+        setResults(filtered)
       } catch {
         setResults([])
       } finally {
         setLoading(false)
       }
-    }, 250)
+    }, 150)
     return () => clearTimeout(timer.current)
   }, [q])
 

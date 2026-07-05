@@ -2,7 +2,6 @@ import { createServerFn } from '@tanstack/react-start'
 import { fetchSeasonalPaged } from '#/lib/anilist/client'
 import { isSeason, type Season } from '#/lib/anilist/season'
 import type { SeasonalResult } from '#/lib/anilist/types'
-import type { SearchIndexEntry } from '#/lib/anilist/types'
 
 /**
  * Data layer for the deployed Worker.
@@ -160,29 +159,26 @@ export const getSeasonalAnime = createServerFn({ method: 'GET' })
 //   })
 // ─────────────────────────────────────────────────────────────────
 
-const SEARCH_INDEX_KEY = 'anilist:search:v1:index'
-
-interface SearchInput {
-  q: string
-}
-
-/**
- * Search anime across all seasons using the pre-built index in KV.
- * The index is built and written by seed scripts — no AniList calls.
- */
-export const searchAnime = createServerFn({ method: 'GET' })
-  .validator((input: SearchInput): string => {
-    const q = String(input.q ?? '').trim()
-    if (q.length < 2) throw new Error('Query too short')
-    return q
-  })
-  .handler(async ({ data: q }): Promise<SearchIndexEntry[]> => {
-    const index = await kvGetJson<SearchIndexEntry[]>(SEARCH_INDEX_KEY)
-    if (!index) return []
-    const lower = q.toLowerCase()
-    return index.filter(
-      (entry) =>
-        entry.title.toLowerCase().includes(lower) ||
-        String(entry.year).includes(lower),
-    ).slice(0, 50)
-  })
+// ── DISABLED ─────────────────────────────────────────────────────
+// Dulu: searchAnime server fn. Sekarang search index adalah file
+// statis public/search-index.json yang di-fetch langsung browser.
+//
+// const SEARCH_INDEX_KEY = 'anilist:search:v1:index'
+// interface SearchInput { q: string }
+// export const searchAnime = createServerFn({ method: 'GET' })
+//   .validator((input: SearchInput): string => {
+//     const q = String(input.q ?? '').trim()
+//     if (q.length < 2) throw new Error('Query too short')
+//     return q
+//   })
+//   .handler(async ({ data: q }): Promise<SearchIndexEntry[]> => {
+//     const index = await kvGetJson<SearchIndexEntry[]>(SEARCH_INDEX_KEY)
+//     if (!index) return []
+//     const lower = q.toLowerCase()
+//     return index.filter(
+//       (entry) =>
+//         entry.title.toLowerCase().includes(lower) ||
+//         String(entry.year).includes(lower),
+//     ).slice(0, 50)
+//   })
+// ─────────────────────────────────────────────────────────────────
