@@ -23,7 +23,7 @@ import {
 
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
 const PER_PAGE = 50
-const ANILIST_PACING_MS = 800 // stay well under 90 req/min
+const ANILIST_PACING_MS = 700 // 85 req/mnt — stay under 90
 
 const ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID
 const API_TOKEN = process.env.CLOUDFLARE_API_TOKEN
@@ -32,6 +32,15 @@ const NAMESPACE_ID =
 const DRY_RUN = process.argv.includes('--dry-run')
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/** Global rate limiter — ensures requests are ≥ ANILIST_PACING_MS apart. */
+let lastRequestTime = 0
+async function rateLimit() {
+  const now = Date.now()
+  const elapsed = now - lastRequestTime
+  if (elapsed < ANILIST_PACING_MS) await sleep(ANILIST_PACING_MS - elapsed)
+  lastRequestTime = Date.now()
+}
 
 // Mirrors of src/lib/format.ts#stripHtml and src/lib/filter.ts#truncatePlain.
 // Duplicated (not imported) because those modules use `#/` subpath imports that
@@ -60,6 +69,7 @@ async function anilistGraphQL(variables: Record<string, unknown>): Promise<{
   pageInfo: { hasNextPage: boolean }
   media: unknown[]
 }> {
+  await rateLimit()
   for (let attempt = 1; attempt <= 4; attempt++) {
     const res = await fetch(ANILIST_ENDPOINT, {
       method: 'POST',
@@ -100,7 +110,6 @@ async function fetchSeason(season: Season, year: number) {
     }
     pageInfo = p.pageInfo
     page++
-    await sleep(ANILIST_PACING_MS)
   } while (pageInfo.hasNextPage)
   return { pageInfo, media, fetchedAt: Date.now() }
 }
