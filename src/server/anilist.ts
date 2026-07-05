@@ -85,11 +85,11 @@ interface SeasonInput {
 
 function validateSeasonInput(input: SeasonInput): { season: Season; year: number } {
   if (!isSeason(input.season)) {
-    throw new Error(`Invalid season: ${input.season}`)
+    throw new Error('Invalid season parameter')
   }
   const year = Number(input.year)
   if (!Number.isInteger(year) || year < 1940 || year > 2100) {
-    throw new Error(`Invalid year: ${input.year}`)
+    throw new Error('Invalid year parameter')
   }
   return { season: input.season, year }
 }

@@ -22,23 +22,31 @@ interface AnimeDetailModalProps {
 export function AnimeDetailModal({ detail, onClose }: AnimeDetailModalProps) {
   const closeRef = useRef<HTMLButtonElement>(null)
   const now = useNow()
-  const jsonLd = useMemo(() => JSON.stringify({
-    '@context': 'https://schema.org',
-    '@type': 'TVSeries',
-    name: pickTitle(detail.title),
-    description: stripHtml(detail.description)?.slice(0, 500),
-    image: detail.coverImage.extraLarge ?? detail.coverImage.large,
-    genre: detail.genres,
-    datePublished: detail.startDate?.year ? `${detail.startDate.year}${detail.startDate.month ? `-${String(detail.startDate.month).padStart(2, '0')}` : ''}${detail.startDate.day ? `-${String(detail.startDate.day).padStart(2, '0')}` : ''}` : undefined,
-    aggregaterating: detail.averageScore ? {
-      '@type': 'AggregateRating',
-      ratingValue: (detail.averageScore / 10).toFixed(1),
-      bestRating: '10',
-      worstRating: '0',
-      ratingCount: detail.popularity ?? 1,
-    } : undefined,
-    ...(detail.studios?.nodes?.[0] ? { productionCompany: detail.studios.nodes[0].name } : {}),
-  }), [detail])
+  const jsonLd = useMemo(
+    () =>
+      JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'TVSeries',
+        name: pickTitle(detail.title),
+        description: stripHtml(detail.description)?.slice(0, 500),
+        image: detail.coverImage.extraLarge ?? detail.coverImage.large,
+        genre: detail.genres,
+        datePublished: detail.startDate?.year
+          ? `${detail.startDate.year}${detail.startDate.month ? `-${String(detail.startDate.month).padStart(2, '0')}` : ''}${detail.startDate.day ? `-${String(detail.startDate.day).padStart(2, '0')}` : ''}`
+          : undefined,
+        aggregaterating: detail.averageScore
+          ? {
+              '@type': 'AggregateRating',
+              ratingValue: (detail.averageScore / 10).toFixed(1),
+              bestRating: '10',
+              worstRating: '0',
+              ratingCount: detail.popularity ?? 1,
+            }
+          : undefined,
+        ...(detail.studios?.nodes?.[0] ? { productionCompany: detail.studios.nodes[0].name } : {}),
+      }).replace(/</g, '\\u003C'),
+    [detail],
+  )
 
   // Close on Escape, lock background scroll, and restore focus to the opener.
   useEffect(() => {
