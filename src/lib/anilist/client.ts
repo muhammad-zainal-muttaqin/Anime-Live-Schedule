@@ -23,6 +23,8 @@ import type {
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
 const PER_PAGE = 50
 const ANILIST_PACING_MS = 400 // be nice to AniList rate limiter
+const ANILIST_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 
 interface GraphQLResponse<T> {
   data: T | null
@@ -49,6 +51,10 @@ export async function anilistGraphQL<T>(
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
+          // Harmless in the browser (fetch ignores it), but when this client
+          // runs under Node (dev SSR / scripts) a real UA lowers the chance
+          // Cloudflare 403s the request in front of AniList.
+          'User-Agent': ANILIST_USER_AGENT,
         },
         body: JSON.stringify({ query, variables }),
       })

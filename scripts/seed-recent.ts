@@ -26,6 +26,8 @@ import {
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
 const PER_PAGE = 50
 const ANILIST_PACING_MS = 700
+const ANILIST_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 // Must match SEASONAL_TTL_SECONDS in src/server/anilist.ts
 const KV_TTL_SECONDS = 60 * 60 * 24 * 30 // 30 days
 
@@ -57,6 +59,10 @@ async function anilistGraphQL(variables: Record<string, unknown>): Promise<{
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        // AniList sits behind Cloudflare, which challenges/403s requests with a
+        // bot-ish or missing UA. A browser-like UA lowers (not eliminates) the
+        // 403 rate from datacenter IPs like the CI runner.
+        'User-Agent': ANILIST_USER_AGENT,
       },
       body: JSON.stringify({ query: SEASONAL_QUERY, variables }),
     })
@@ -250,6 +256,9 @@ async function main() {
   }
 
   const jobs = seedWindow()
+  // jobs[0] is the current season — the only one with live countdowns that go
+  // stale within hours. If that one fails, the run must go red (see below).
+  const currentKey = `anilist:season:v2:${jobs[0].season}:${jobs[0].year}`
   console.log(
     `Seeding ${jobs.length} seasons (current + 4 upcoming) → KV ${NAMESPACE_ID}` +
       (DRY_RUN ? '  [DRY RUN, no writes]' : ''),
@@ -286,6 +295,19 @@ async function main() {
 
   if (written > 0) {
     await writeSearchIndex(allResults)
+  }
+
+  // Fail loud. A green run that wrote nothing (or skipped the current season)
+  // is worse than a red one: KV silently freezes and countdowns rot into
+  // "aired" with no signal. AniList 403s the CI runner IP intermittently, so
+  // this exit code is the alarm that the seed pipeline needs attention.
+  if (!DRY_RUN && !allResults.has(currentKey)) {
+    console.error(
+      `\nFATAL: musim berjalan (${jobs[0].season} ${jobs[0].year}) gagal di-seed ` +
+        `— KV tidak diperbarui (kemungkinan AniList 403 ke IP runner). ` +
+        `Data countdown akan basi sampai run berikutnya berhasil.`,
+    )
+    process.exit(1)
   }
 }
 

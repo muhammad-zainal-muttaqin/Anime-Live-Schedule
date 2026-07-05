@@ -30,6 +30,8 @@ import {
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
 const PER_PAGE = 50
 const ANILIST_PACING_MS = 700 // 85 req/mnt — stay under 90
+const ANILIST_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 
 const ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID
 const API_TOKEN = process.env.CLOUDFLARE_API_TOKEN
@@ -59,6 +61,8 @@ async function anilistGraphQL(variables: Record<string, unknown>): Promise<{
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        // See seed-recent.ts — a browser-like UA lowers Cloudflare's 403 rate.
+        'User-Agent': ANILIST_USER_AGENT,
       },
       body: JSON.stringify({ query: SEASONAL_QUERY, variables }),
     })
@@ -250,6 +254,15 @@ async function main() {
 
   if (written > 0) {
     await writeSearchIndex(allResults)
+  }
+
+  // Wrote nothing at all — almost always AniList 403ing this IP. Exit non-zero
+  // so the failure is visible instead of a silent green run.
+  if (!DRY_RUN && written === 0) {
+    console.error(
+      '\nFATAL: 0 musim berhasil di-seed (kemungkinan AniList 403 ke IP ini). KV tidak diperbarui.',
+    )
+    process.exit(1)
   }
 }
 

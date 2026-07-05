@@ -1,6 +1,7 @@
 import { queryOptions } from '@tanstack/react-query'
 import { fetchAnimeDetail, fetchSeasonalPaged } from '#/lib/anilist/client'
 import { getSeasonalAnime } from '#/server/anilist'
+import { SEASONS, getCurrentSeason } from '#/lib/anilist/season'
 import type { Season } from '#/lib/anilist/season'
 
 /**
@@ -15,14 +16,45 @@ import type { Season } from '#/lib/anilist/season'
  * options are only ever enabled client-side (see the detail route).
  */
 
+// KV is reseeded every ~3h by CI. If it's older than that the seed pipeline is
+// behind (AniList 403s the runner IP intermittently), so the browser self-heals
+// by refetching directly — see the queryFn below.
+const SEASON_STALE_MS = 1000 * 60 * 60 * 3
+
+function seasonOrdinal(season: Season, year: number): number {
+  return year * SEASONS.length + SEASONS.indexOf(season)
+}
+
+/** Only the current + upcoming seasons have live countdowns worth refreshing. */
+function isCurrentOrUpcoming(season: Season, year: number): boolean {
+  const c = getCurrentSeason()
+  return seasonOrdinal(season, year) >= seasonOrdinal(c.season, c.year)
+}
+
 export const seasonalQueryOptions = (season: Season, year: number) =>
   queryOptions({
     queryKey: ['seasonal', season, year] as const,
     queryFn: async () => {
       const fromKv = await getSeasonalAnime({ data: { season, year } })
-      if (fromKv.media.length > 0) return fromKv
+      const inBrowser = typeof window !== 'undefined'
+      if (fromKv.media.length > 0) {
+        // Self-heal: when the seed pipeline is behind and this season still has
+        // live countdowns, refresh straight from AniList (browser IP isn't
+        // blocked) so stale snapshots don't rot into wrong "aired" badges.
+        // Falls back to the KV snapshot on any error. No-op when KV is fresh,
+        // so a healthy pipeline means zero extra AniList calls.
+        const stale = Date.now() - fromKv.fetchedAt > SEASON_STALE_MS
+        if (inBrowser && stale && isCurrentOrUpcoming(season, year)) {
+          try {
+            return await fetchSeasonalPaged(season, year)
+          } catch {
+            return fromKv
+          }
+        }
+        return fromKv
+      }
       // Cold season (not seeded): fetch it live from the browser.
-      if (typeof window !== 'undefined') {
+      if (inBrowser) {
         return await fetchSeasonalPaged(season, year)
       }
       return fromKv
