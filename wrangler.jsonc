@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "anime-live-schedule",
+  "compatibility_date": "2025-09-02",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry",
+
+  // KV namespace used as the AniList response cache. This is what keeps us
+  // under AniList's 90 req/min limit: browsers hit KV, not AniList.
+  //
+  // For local dev (`pnpm dev`) the Cloudflare Vite plugin emulates this with
+  // Miniflare, so the placeholder id below is fine.
+  //
+  // Before deploying, create a real namespace and paste its id here:
+  //   pnpm wrangler kv namespace create CACHE
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "0000000000000000000000000000000000"
+    }
+  ],
+
+  "observability": {
+    "enabled": true
+  }
+}
