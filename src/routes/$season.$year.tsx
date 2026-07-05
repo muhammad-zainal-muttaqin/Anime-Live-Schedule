@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Outlet, createFileRoute, redirect, stripSearchParams, useRouter } from '@tanstack/react-router'
+import { Link, Outlet, createFileRoute, redirect, stripSearchParams, useRouter } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { SearchX, Tv, X } from 'lucide-react'
 import { AnimeCard } from '#/components/AnimeCard'
@@ -68,13 +68,17 @@ function PageShell({
     <div className="season-ambient min-h-screen" data-season={season}>
       <div className={`${CONTAINER} pt-6`}>
         <header className="flex items-center gap-3">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent-strong text-accent-ink shadow-lg shadow-black/30">
+          <Link
+            to="/"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent-strong text-accent-ink shadow-lg shadow-black/30 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
+            aria-label="Beranda"
+          >
             <Tv className="h-5 w-5" />
-          </span>
-          <div>
+          </Link>
+          <Link to="/" className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring rounded">
             <h1 className="text-lg font-bold tracking-tight text-ink">AnimeSeasons</h1>
             <p className="text-xs text-ink-subtle">Jadwal tayang anime per musim · data AniList</p>
-          </div>
+          </Link>
         </header>
       </div>
 
