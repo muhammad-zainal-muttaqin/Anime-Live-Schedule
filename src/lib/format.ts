@@ -87,19 +87,21 @@ export function formatScore(averageScore: number | null): string | null {
   return (averageScore / 10).toFixed(1)
 }
 
-/** Countdown to an airing time, e.g. "2d 3h", "5h 12m", "3m", or "aired". */
+/** Countdown to an airing time, e.g. "2d 3h 30m 15s", or "aired". */
 export function formatTimeUntil(airingAtSeconds: number, now: number = Date.now()): string {
   const diffMs = airingAtSeconds * 1000 - now
   if (diffMs <= 0) return 'aired'
 
-  const totalMinutes = Math.floor(diffMs / 60000)
-  const days = Math.floor(totalMinutes / (60 * 24))
-  const hours = Math.floor((totalMinutes % (60 * 24)) / 60)
-  const minutes = totalMinutes % 60
+  const totalSeconds = Math.floor(diffMs / 1000)
+  const days = Math.floor(totalSeconds / 86400)
+  const hours = Math.floor((totalSeconds % 86400) / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
 
-  if (days > 0) return `${days}d ${hours}h`
-  if (hours > 0) return `${hours}h ${minutes}m`
-  return `${minutes}m`
+  if (days > 0) return `${days}d ${hours}h ${minutes}m ${seconds}s`
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`
+  if (minutes > 0) return `${minutes}m ${seconds}s`
+  return `${seconds}s`
 }
 
 const MONTHS = [
