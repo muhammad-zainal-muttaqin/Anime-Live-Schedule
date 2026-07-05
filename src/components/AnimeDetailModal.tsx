@@ -12,6 +12,7 @@ import {
   STATUS_TONE,
   stripHtml,
 } from '#/lib/format'
+import { useNow } from '#/lib/hooks'
 
 interface AnimeDetailModalProps {
   detail: AnimeDetail
@@ -20,6 +21,7 @@ interface AnimeDetailModalProps {
 
 export function AnimeDetailModal({ detail, onClose }: AnimeDetailModalProps) {
   const closeRef = useRef<HTMLButtonElement>(null)
+  const now = useNow()
 
   // Close on Escape, lock background scroll, and restore focus to the opener.
   useEffect(() => {
@@ -129,7 +131,7 @@ export function AnimeDetailModal({ detail, onClose }: AnimeDetailModalProps) {
               <CalendarClock className="h-4 w-4 shrink-0" />
               <span>Episode {airing.episode} tayang dalam</span>
               <span className="font-semibold tabular-nums text-ink">
-                {formatTimeUntil(airing.airingAt)}
+                {formatTimeUntil(airing.airingAt, now)}
               </span>
             </div>
           ) : null}

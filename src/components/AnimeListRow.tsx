@@ -12,6 +12,7 @@ import {
   pickTitle,
   STATUS_TONE,
 } from '#/lib/format'
+import { useNow } from '#/lib/hooks'
 
 interface AnimeListRowProps {
   anime: AnimeMedia
@@ -27,6 +28,7 @@ export function AnimeListRow({ anime, season, year }: AnimeListRowProps) {
   const score = formatScore(anime.averageScore)
   const cover = anime.coverImage.large ?? anime.coverImage.extraLarge ?? undefined
   const airing = anime.nextAiringEpisode
+  const now = useNow()
 
   const meta = [
     anime.studios.nodes[0]?.name,
@@ -90,7 +92,7 @@ export function AnimeListRow({ anime, season, year }: AnimeListRowProps) {
         ) : null}
         {airing ? (
           <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent ring-1 ring-accent-line tabular-nums">
-            EP {airing.episode} · {formatTimeUntil(airing.airingAt)}
+            EP {airing.episode} · {formatTimeUntil(airing.airingAt, now)}
           </span>
         ) : anime.status ? (
           <span className="flex items-center gap-1.5 text-xs text-ink-subtle">

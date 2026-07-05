@@ -7,6 +7,7 @@ import {
   formatTimeUntil,
   pickTitle,
 } from '#/lib/format'
+import { useNow } from '#/lib/hooks'
 
 interface AnimeCardProps {
   anime: AnimeMedia
@@ -20,6 +21,7 @@ export function AnimeCard({ anime, season, year }: AnimeCardProps) {
   const cover = anime.coverImage.extraLarge ?? anime.coverImage.large ?? undefined
   const studio = anime.studios.nodes[0]?.name
   const airing = anime.nextAiringEpisode
+  const now = useNow()
   // "TV" is the default expectation — only surface the format when it's notable.
   const format = anime.format && anime.format !== 'TV' ? formatFormat(anime.format) : null
 
@@ -69,7 +71,7 @@ export function AnimeCard({ anime, season, year }: AnimeCardProps) {
               />
               EP {airing.episode}
             </span>
-            <span className="tabular-nums">{formatTimeUntil(airing.airingAt)}</span>
+            <span className="tabular-nums">{formatTimeUntil(airing.airingAt, now)}</span>
           </div>
         ) : null}
       </div>
