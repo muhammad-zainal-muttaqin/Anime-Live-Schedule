@@ -123,21 +123,68 @@ function seedWindow(): Array<{ season: Season; year: number }> {
   return list
 }
 
+/* Put a KV value with no TTL (for the persistent search index). */
+async function putKvPersist(key: string, value: unknown): Promise<void> {
+  const encoded = encodeURIComponent(key)
+  const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/storage/kv/namespaces/${NAMESPACE_ID}/values/${encoded}`
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${API_TOKEN}`, 'Content-Type': 'text/plain' },
+    body: JSON.stringify(value),
+  })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`KV PUT ${res.status}: ${body.slice(0, 200)}`)
+  }
+}
+
+/** Read a KV value. Returns null if missing/error. */
+async function getKv(key: string): Promise<unknown> {
+  const encoded = encodeURIComponent(key)
+  const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/storage/kv/namespaces/${NAMESPACE_ID}/values/${encoded}`
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${API_TOKEN}` } })
+    if (!res.ok) return null
+    return res.json()
+  } catch {
+    return null
+  }
+}
+
 /** Minimal pickTitle clone (can't import #/lib/format from scripts). */
 function pickTitle(title: { romaji?: string | null; english?: string | null; native?: string | null }): string {
   return title.english || title.romaji || title.native || 'Untitled'
 }
 
-/** Build and write the cross-season search index. */
+interface IndexEntry {
+  id: number
+  title: string
+  season: string
+  year: number
+  coverImage: string | null
+  format: string | null
+  averageScore: number | null
+}
+
+/** Merge new season data into the existing KV search index (preserves old entries). */
 async function writeSearchIndex(
   results: Map<string, { season: string; year: number; media: unknown[] }>,
 ): Promise<void> {
-  const index: Array<{ id: number; title: string; season: string; year: number; coverImage: string | null; format: string | null; averageScore: number | null }> = []
+  // Read existing index from KV
+  let existing: IndexEntry[] = []
+  const raw = await getKv('anilist:search:v1:index')
+  if (Array.isArray(raw)) existing = raw as IndexEntry[]
+
+  // Build a set of IDs that will be replaced (from the updated seasons)
+  const freshIds = new Set<number>()
+  const fresh: IndexEntry[] = []
   for (const [, result] of results) {
     for (const raw of result.media) {
       const m = raw as { id: number; title: { romaji?: string | null; english?: string | null; native?: string | null }; coverImage: { large?: string | null }; format?: string | null; averageScore?: number | null }
-      index.push({
-        id: m.id,
+      const id = Number(m.id)
+      freshIds.add(id)
+      fresh.push({
+        id,
         title: pickTitle(m.title),
         season: result.season,
         year: result.year,
@@ -147,11 +194,14 @@ async function writeSearchIndex(
       })
     }
   }
-  console.log(`Membangun search index — ${index.length} entri`)
+
+  // Merge: keep old entries not in the updated seasons, then add fresh ones
+  const merged = [...existing.filter((e) => !freshIds.has(e.id)), ...fresh]
+  console.log(`Search index: ${existing.length} → ${merged.length} entri (${fresh.length} baru/diupdate)`)
+
   if (!DRY_RUN) {
-    await putKv('anilist:search:v1:index', index)
+    await putKvPersist('anilist:search:v1:index', merged)
   }
-  console.log(`Search index ditulis.`)
 }
 
 async function main() {
