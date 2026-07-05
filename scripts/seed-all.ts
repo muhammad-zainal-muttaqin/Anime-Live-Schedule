@@ -120,6 +120,16 @@ async function putKv(key: string, value: unknown): Promise<void> {
   }
 }
 
+/** Best-effort delete of a key (used to clear the old v1 seed format). */
+async function deleteKv(key: string): Promise<void> {
+  const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/storage/kv/namespaces/${NAMESPACE_ID}/values/${encodeURIComponent(key)}`
+  try {
+    await fetch(url, { method: 'DELETE', headers: { Authorization: `Bearer ${API_TOKEN}` } })
+  } catch {
+    // ignore — cleanup is optional
+  }
+}
+
 /** Minimal pickTitle clone (can't import #/lib/format from scripts). */
 function pickTitle(title: { romaji?: string | null; english?: string | null; native?: string | null }): string {
   return title.english || title.romaji || title.native || 'Untitled'
