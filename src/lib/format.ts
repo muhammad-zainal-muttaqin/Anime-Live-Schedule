@@ -1,9 +1,9 @@
 import type { AniListFuzzyDate, AniListTitle } from '#/lib/anilist/types'
+import { pickTitle, stripHtml } from '#/lib/text'
 
-/** Prefer English, fall back to romaji, then native. */
-export function pickTitle(title: AniListTitle): string {
-  return title.english || title.romaji || title.native || 'Untitled'
-}
+// Re-exported so existing `#/lib/format` importers keep working; the canonical
+// definitions now live in the dependency-free `#/lib/text` module.
+export { pickTitle, stripHtml }
 
 /** The other titles, for showing under the main one in the modal. */
 export function secondaryTitle(title: AniListTitle): string | null {
@@ -116,16 +116,3 @@ export function formatFuzzyDate(date: AniListFuzzyDate): string | null {
   return date.day ? `${month} ${date.day}, ${date.year}` : `${month} ${date.year}`
 }
 
-/** Strip AniList's HTML/markup out of a description for plain-text preview. */
-export function stripHtml(html: string | null): string {
-  if (!html) return ''
-  return html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#0?39;|&apos;/g, "'")
-    .replace(/&mdash;/g, '—')
-    .trim()
-}

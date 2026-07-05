@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { fetchSeasonalPaged } from '#/lib/anilist/client'
-import { isSeason, type Season } from '#/lib/anilist/season'
+import { getMaxYear, isSeason, MIN_YEAR, type Season } from '#/lib/anilist/season'
 import type { SeasonalResult } from '#/lib/anilist/types'
 
 /**
@@ -88,7 +88,8 @@ function validateSeasonInput(input: SeasonInput): { season: Season; year: number
     throw new Error('Invalid season parameter')
   }
   const year = Number(input.year)
-  if (!Number.isInteger(year) || year < 1940 || year > 2100) {
+  // Match the range the UI actually offers (see season.ts): MIN_YEAR..next year.
+  if (!Number.isInteger(year) || year < MIN_YEAR || year > getMaxYear() + 1) {
     throw new Error('Invalid year parameter')
   }
   return { season: input.season, year }

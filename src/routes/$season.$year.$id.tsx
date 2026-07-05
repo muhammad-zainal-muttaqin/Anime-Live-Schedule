@@ -55,13 +55,17 @@ function useCloseModal() {
 function DetailRoute() {
   const params = Route.useParams()
   const close = useCloseModal()
+  const id = Number(params.id)
+  const validId = Number.isInteger(id) && id > 0
   // Fetch only in the browser: AniList blocks the Cloudflare Worker, so SSR
   // (including deep-links) must not try to fetch it.
   const { data, error, isPending } = useQuery({
-    ...animeDetailQueryOptions(Number(params.id)),
-    enabled: typeof window !== 'undefined',
+    ...animeDetailQueryOptions(id),
+    enabled: validId && typeof window !== 'undefined',
   })
 
+  // A non-numeric /:id can't be a real AniList title — don't fire a doomed fetch.
+  if (!validId) return <DetailError error={new Error(`Invalid anime id: ${params.id}`)} />
   if (error) return <DetailError error={error as Error} />
   if (isPending || !data) return <DetailPending />
   return <AnimeDetailModal detail={data} onClose={close} />

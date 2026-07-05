@@ -7,7 +7,11 @@
  * (see `parseSearch`), which keeps filtered views shareable and SSR-able.
  */
 import type { AniListFuzzyDate, AnimeMedia } from '#/lib/anilist/types'
-import { pickTitle } from '#/lib/format'
+import { normalizeText, pickTitle, truncatePlain } from '#/lib/text'
+
+// Re-exported so existing `#/lib/filter` importers (e.g. anilist/client) keep
+// working; the canonical definitions live in the dependency-free `#/lib/text`.
+export { normalizeText, truncatePlain }
 
 export const FORMAT_BUCKETS = ['all', 'tv', 'movie', 'ova'] as const
 export type FormatBucket = (typeof FORMAT_BUCKETS)[number]
@@ -148,14 +152,6 @@ export function formatBucketOf(format: string | null): FormatBucket | null {
   }
 }
 
-/** Lowercase + strip diacritics so "Ō" matches "o". */
-export function normalizeText(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-}
-
 /** Match against all three title variants and every listed studio. */
 export function matchesSearch(media: AnimeMedia, query: string): boolean {
   const q = normalizeText(query.trim())
@@ -245,10 +241,3 @@ export function deriveGenreCounts(media: AnimeMedia[]): Array<{ genre: string; c
     .sort((a, b) => a.genre.localeCompare(b.genre))
 }
 
-/** Word-boundary truncation for synopsis previews stored in the season cache. */
-export function truncatePlain(text: string, max = 300): string {
-  if (text.length <= max) return text
-  const slice = text.slice(0, max)
-  const lastSpace = slice.lastIndexOf(' ')
-  return `${(lastSpace > max * 0.6 ? slice.slice(0, lastSpace) : slice).trimEnd()}…`
-}

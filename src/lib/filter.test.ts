@@ -67,6 +67,7 @@ describe('parseSearch', () => {
       sort: 'popularity',
       dir: undefined,
       view: 'grid',
+      includeAdult: false,
     })
   })
 
@@ -79,6 +80,7 @@ describe('parseSearch', () => {
       sort: 'score',
       dir: undefined,
       view: 'list',
+      includeAdult: false,
     })
   })
 
