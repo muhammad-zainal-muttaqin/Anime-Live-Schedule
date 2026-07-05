@@ -12,6 +12,7 @@ const MEDIA_CARD_FIELDS = `
   id
   idMal
   title { romaji english native }
+  synonyms
   coverImage { extraLarge large color }
   bannerImage
   genres

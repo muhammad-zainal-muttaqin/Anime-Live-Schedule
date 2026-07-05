@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { ArrowLeft, Search, Tv, X } from 'lucide-react'
+import { normalizeText } from '#/lib/text'
 import type { SearchIndexEntry } from '#/lib/anilist/types'
 
 export const Route = createFileRoute('/search')({
@@ -9,6 +10,8 @@ export const Route = createFileRoute('/search')({
 
 const CONTAINER = 'mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8'
 const GRID = 'grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
+const MAX_RESULTS = 60
+const POPULAR_COUNT = 24
 
 let indexPromise: Promise<SearchIndexEntry[]> | null = null
 
@@ -20,6 +23,38 @@ function loadIndex(): Promise<SearchIndexEntry[]> {
     })
   }
   return indexPromise
+}
+
+/** An index entry with its titles pre-normalized for matching. */
+interface Prepared {
+  entry: SearchIndexEntry
+  /** Normalized display title + every alternate title, for substring matching. */
+  hay: string[]
+  /** popularity with a numeric floor so it always sorts. */
+  pop: number
+}
+
+// Relevance tiers (lower = better). A numeric year hit ranks below every text hit.
+const RANK_EXACT = 0
+const RANK_PREFIX = 1
+const RANK_WORD = 2
+const RANK_SUBSTR = 3
+const RANK_YEAR = 4
+const NO_MATCH = 99
+
+/** Best relevance tier for a query across an entry's titles (+ year fallback). */
+function rankOf(hay: string[], nq: string, year: number): number {
+  let best = NO_MATCH
+  for (const h of hay) {
+    if (h === nq) return RANK_EXACT
+    if (h.startsWith(nq)) best = Math.min(best, RANK_PREFIX)
+    else if (`${' '}${h}`.includes(`${' '}${nq}`)) best = Math.min(best, RANK_WORD)
+    else if (h.includes(nq)) best = Math.min(best, RANK_SUBSTR)
+  }
+  if (best === NO_MATCH && /^\d{2,4}$/.test(nq) && String(year).includes(nq)) {
+    return RANK_YEAR
+  }
+  return best
 }
 
 function BackButton() {
@@ -38,40 +73,74 @@ function BackButton() {
 
 function SearchPage() {
   const [q, setQ] = useState('')
-  const [results, setResults] = useState<SearchIndexEntry[]>([])
-  const [loading, setLoading] = useState(false)
-  const timer = useRef<ReturnType<typeof setTimeout>>()
+  const [deferredQ, setDeferredQ] = useState('')
+  const [index, setIndex] = useState<SearchIndexEntry[] | null>(null)
+  const [failed, setFailed] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
+  // Load the static index once on mount.
+  useEffect(() => {
+    let alive = true
+    loadIndex()
+      .then((data) => alive && setIndex(data))
+      .catch(() => alive && setFailed(true))
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  // Debounce the query so we don't re-rank on every keystroke.
   useEffect(() => {
     clearTimeout(timer.current)
-    const trimmed = q.trim()
-    if (trimmed.length < 2) {
-      setResults([])
-      return
-    }
-
-    setLoading(true)
-    timer.current = setTimeout(async () => {
-      try {
-        const index = await loadIndex()
-        const lower = trimmed.toLowerCase()
-        const filtered = index.filter(
-          (entry) =>
-            entry.title.toLowerCase().includes(lower) ||
-            String(entry.year).includes(trimmed),
-        ).slice(0, 50)
-        setResults(filtered)
-      } catch {
-        setResults([])
-      } finally {
-        setLoading(false)
-      }
-    }, 150)
+    timer.current = setTimeout(() => setDeferredQ(q), 150)
     return () => clearTimeout(timer.current)
   }, [q])
 
+  // Pre-normalize every entry's titles once; reused across queries.
+  const prepared = useMemo<Prepared[]>(() => {
+    if (!index) return []
+    return index.map((entry) => ({
+      entry,
+      hay: [entry.title, ...(entry.alt ?? [])].map(normalizeText),
+      pop: entry.popularity ?? 0,
+    }))
+  }, [index])
+
+  // Empty-state suggestions: the most popular titles across all seasons.
+  const popular = useMemo<SearchIndexEntry[]>(() => {
+    return [...prepared]
+      .sort((a, b) => b.pop - a.pop)
+      .slice(0, POPULAR_COUNT)
+      .map((p) => p.entry)
+  }, [prepared])
+
+  const results = useMemo<SearchIndexEntry[]>(() => {
+    const nq = normalizeText(deferredQ.trim())
+    if (nq.length < 2) return []
+    const scored: Array<{ p: Prepared; r: number }> = []
+    for (const p of prepared) {
+      const r = rankOf(p.hay, nq, p.entry.year)
+      if (r !== NO_MATCH) scored.push({ p, r })
+    }
+    scored.sort(
+      (a, b) =>
+        a.r - b.r ||
+        b.p.pop - a.p.pop ||
+        (b.p.entry.averageScore ?? 0) - (a.p.entry.averageScore ?? 0) ||
+        a.p.entry.title.localeCompare(b.p.entry.title),
+    )
+    return scored.slice(0, MAX_RESULTS).map((s) => s.p.entry)
+  }, [deferredQ, prepared])
+
   const inputRef = useRef<HTMLInputElement>(null)
-  useEffect(() => { inputRef.current?.focus() }, [])
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  const trimmed = q.trim()
+  const searching = trimmed.length >= 2
+  // "Loading" only while a query is pending and the index hasn't arrived yet.
+  const loading = searching && !index && !failed
 
   return (
     <div className="season-ambient min-h-dvh bg-bg" data-season="spring">
@@ -99,7 +168,10 @@ function SearchPage() {
             type="text"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Cari anime…"
+            placeholder="Cari judul apa pun — Jepang, Inggris, atau singkatan…"
+            autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
             className="w-full rounded-xl border border-border bg-surface py-3 pl-12 pr-10 text-sm text-ink outline-none placeholder:text-ink-muted focus:border-accent-ring focus:ring-2 focus:ring-accent-ring"
           />
           {q && (
@@ -114,23 +186,39 @@ function SearchPage() {
           )}
         </div>
 
-        {loading ? (
+        {failed ? (
+          <div className="mt-16 text-center text-sm text-ink-subtle">
+            Gagal memuat indeks pencarian. Coba refresh halaman.
+          </div>
+        ) : loading ? (
           <div className="mt-8 text-center text-sm text-ink-muted">Mencari…</div>
-        ) : results.length > 0 ? (
+        ) : searching ? (
+          results.length > 0 ? (
+            <>
+              <p className="mt-6 text-sm text-ink-subtle">
+                <span className="font-semibold tabular-nums text-ink-muted">{results.length}</span> judul
+                {results.length === MAX_RESULTS ? ' teratas' : ''}
+              </p>
+              <div className={`mt-5 ${GRID}`}>
+                {results.map((anime) => (
+                  <SearchCard key={anime.id} anime={anime} />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="mt-16 text-center text-sm text-ink-subtle">
+              Tidak ada judul yang cocok dengan “{q}”
+            </div>
+          )
+        ) : popular.length > 0 ? (
           <>
-            <p className="mt-6 text-sm text-ink-subtle">
-              <span className="font-semibold tabular-nums text-ink-muted">{results.length}</span> judul
-            </p>
+            <p className="mt-6 text-sm font-medium text-ink-muted">Populer</p>
             <div className={`mt-5 ${GRID}`}>
-              {results.map((anime) => (
+              {popular.map((anime) => (
                 <SearchCard key={anime.id} anime={anime} />
               ))}
             </div>
           </>
-        ) : q.trim().length >= 2 ? (
-          <div className="mt-16 text-center text-sm text-ink-subtle">
-            Tidak ada judul yang cocok dengan “{q}”
-          </div>
         ) : null}
       </div>
     </div>
@@ -138,7 +226,7 @@ function SearchPage() {
 }
 
 function SearchCard({ anime }: { anime: SearchIndexEntry }) {
-  const seasonLabel = SEASON_LABELS[anime.season as keyof typeof SEASON_LABELS] ?? anime.season
+  const seasonLabel = SEASON_LABELS[anime.season] ?? anime.season
   return (
     <Link
       to="/$season/$year/$id"

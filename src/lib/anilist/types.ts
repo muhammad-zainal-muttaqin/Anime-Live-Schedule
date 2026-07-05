@@ -34,6 +34,9 @@ export interface AnimeMedia {
   id: number
   idMal: number | null
   title: AniListTitle
+  /** Alternate titles from AniList (romanizations, abbreviations). Optional:
+   *  snapshots cached before this field existed lack it. */
+  synonyms?: string[]
   coverImage: AniListCoverImage
   bannerImage: string | null
   genres: string[]
@@ -120,4 +123,8 @@ export interface SearchIndexEntry {
   coverImage: string | null
   format: string | null
   averageScore: number | null
+  /** Ranking signal — higher sorts first. Optional on pre-enrichment indexes. */
+  popularity?: number | null
+  /** Other searchable titles (romaji/native/english/synonyms), minus `title`. */
+  alt?: string[]
 }

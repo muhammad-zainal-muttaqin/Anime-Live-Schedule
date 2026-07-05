@@ -17,9 +17,11 @@ import {
   MIN_YEAR,
   SEASONS,
   getMaxYear,
-  seasonToApi,
-  type Season,
+  seasonToApi
+  
 } from '../src/lib/anilist/season.ts'
+import type {Season} from '../src/lib/anilist/season.ts';
+import { altTitles, pickTitle, stripHtml, truncatePlain } from '../src/lib/text.ts'
 
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
 const PER_PAGE = 50
@@ -40,29 +42,6 @@ async function rateLimit() {
   const elapsed = now - lastRequestTime
   if (elapsed < ANILIST_PACING_MS) await sleep(ANILIST_PACING_MS - elapsed)
   lastRequestTime = Date.now()
-}
-
-// Mirrors of src/lib/format.ts#stripHtml and src/lib/filter.ts#truncatePlain.
-// Duplicated (not imported) because those modules use `#/` subpath imports that
-// a plain `node --experimental-strip-types` run can't resolve. Keep in sync.
-function stripHtml(html: string | null): string {
-  if (!html) return ''
-  return html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#0?39;|&apos;/g, "'")
-    .replace(/&mdash;/g, '—')
-    .trim()
-}
-
-function truncatePlain(text: string, max = 300): string {
-  if (text.length <= max) return text
-  const slice = text.slice(0, max)
-  const lastSpace = slice.lastIndexOf(' ')
-  return `${(lastSpace > max * 0.6 ? slice.slice(0, lastSpace) : slice).trimEnd()}…`
 }
 
 async function anilistGraphQL(variables: Record<string, unknown>): Promise<{
@@ -138,28 +117,52 @@ async function deleteKv(key: string): Promise<void> {
   }
 }
 
-/** Minimal pickTitle clone (can't import #/lib/format from scripts). */
-function pickTitle(title: { romaji?: string | null; english?: string | null; native?: string | null }): string {
-  return title.english || title.romaji || title.native || 'Untitled'
+interface IndexEntry {
+  id: number
+  title: string
+  season: string
+  year: number
+  coverImage: string | null
+  format: string | null
+  averageScore: number | null
+  popularity: number | null
+  alt: string[]
+}
+
+type IndexMedia = {
+  id: number
+  title: { romaji?: string | null; english?: string | null; native?: string | null }
+  synonyms?: string[] | null
+  coverImage?: { large?: string | null } | null
+  format?: string | null
+  averageScore?: number | null
+  popularity?: number | null
+}
+
+/** Map one AniList media object to a search-index entry (titles + ranking signal). */
+function toIndexEntry(m: IndexMedia, season: string, year: number): IndexEntry {
+  const title = pickTitle(m.title)
+  return {
+    id: Number(m.id),
+    title,
+    season,
+    year,
+    coverImage: m.coverImage?.large ?? null,
+    format: m.format ?? null,
+    averageScore: m.averageScore ?? null,
+    popularity: m.popularity ?? null,
+    alt: altTitles(m.title, m.synonyms, title),
+  }
 }
 
 /** Build and write the cross-season search index from results accumulated in memory. */
 async function writeSearchIndex(
   results: Map<string, { season: string; year: number; media: unknown[] }>,
 ): Promise<void> {
-  const index: Array<{ id: number; title: string; season: string; year: number; coverImage: string | null; format: string | null; averageScore: number | null }> = []
+  const index: IndexEntry[] = []
   for (const [, result] of results) {
     for (const raw of result.media) {
-      const m = raw as { id: number; title: { romaji?: string | null; english?: string | null; native?: string | null }; coverImage: { large?: string | null }; format?: string | null; averageScore?: number | null }
-      index.push({
-        id: m.id,
-        title: pickTitle(m.title),
-        season: result.season,
-        year: result.year,
-        coverImage: m.coverImage?.large ?? null,
-        format: m.format ?? null,
-        averageScore: m.averageScore ?? null,
-      })
+      index.push(toIndexEntry(raw as IndexMedia, result.season, result.year))
     }
   }
   console.log(`\nBuilding search index — ${index.length} entries`)

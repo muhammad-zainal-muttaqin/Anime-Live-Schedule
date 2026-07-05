@@ -13,9 +13,11 @@ import { SEASONAL_QUERY } from '../src/lib/anilist/queries.ts'
 import {
   getCurrentSeason,
   shiftSeason,
-  seasonToApi,
-  type Season,
+  seasonToApi
+  
 } from '../src/lib/anilist/season.ts'
+import type {Season} from '../src/lib/anilist/season.ts';
+import { altTitles, pickTitle, stripHtml, truncatePlain } from '../src/lib/text.ts'
 
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
 const PER_PAGE = 50
@@ -38,26 +40,6 @@ async function rateLimit() {
   const elapsed = now - lastRequestTime
   if (elapsed < ANILIST_PACING_MS) await sleep(ANILIST_PACING_MS - elapsed)
   lastRequestTime = Date.now()
-}
-
-function stripHtml(html: string | null): string {
-  if (!html) return ''
-  return html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#0?39;|&apos;/g, "'")
-    .replace(/&mdash;/g, '—')
-    .trim()
-}
-
-function truncatePlain(text: string, max = 300): string {
-  if (text.length <= max) return text
-  const slice = text.slice(0, max)
-  const lastSpace = slice.lastIndexOf(' ')
-  return `${(lastSpace > max * 0.6 ? slice.slice(0, lastSpace) : slice).trimEnd()}…`
 }
 
 async function anilistGraphQL(variables: Record<string, unknown>): Promise<{
@@ -159,11 +141,6 @@ async function getKv(key: string): Promise<unknown> {
   }
 }
 
-/** Minimal pickTitle clone (can't import #/lib/format from scripts). */
-function pickTitle(title: { romaji?: string | null; english?: string | null; native?: string | null }): string {
-  return title.english || title.romaji || title.native || 'Untitled'
-}
-
 interface IndexEntry {
   id: number
   title: string
@@ -172,9 +149,37 @@ interface IndexEntry {
   coverImage: string | null
   format: string | null
   averageScore: number | null
+  popularity: number | null
+  alt: string[]
 }
 
-/** Merge new season data into the existing KV search index (preserves old entries). */
+type IndexMedia = {
+  id: number
+  title: { romaji?: string | null; english?: string | null; native?: string | null }
+  synonyms?: string[] | null
+  coverImage?: { large?: string | null } | null
+  format?: string | null
+  averageScore?: number | null
+  popularity?: number | null
+}
+
+/** Map one AniList media object to a search-index entry (titles + ranking signal). */
+function toIndexEntry(m: IndexMedia, season: string, year: number): IndexEntry {
+  const title = pickTitle(m.title)
+  return {
+    id: Number(m.id),
+    title,
+    season,
+    year,
+    coverImage: m.coverImage?.large ?? null,
+    format: m.format ?? null,
+    averageScore: m.averageScore ?? null,
+    popularity: m.popularity ?? null,
+    alt: altTitles(m.title, m.synonyms, title),
+  }
+}
+
+/** Merge new season data into the existing KV search index (preserves other seasons). */
 async function writeSearchIndex(
   results: Map<string, { season: string; year: number; media: unknown[] }>,
 ): Promise<void> {
@@ -183,29 +188,25 @@ async function writeSearchIndex(
   const raw = await getKv('anilist:search:v1:index')
   if (Array.isArray(raw)) existing = raw as IndexEntry[]
 
-  // Build a set of IDs that will be replaced (from the updated seasons)
-  const freshIds = new Set<number>()
+  // The seasons we're replacing wholesale this run. Any existing entry in one of
+  // these gets dropped and rebuilt from `fresh`, so titles removed from AniList
+  // (or that switched season/year) don't linger in the index.
+  const updatedSeasons = new Set<string>()
   const fresh: IndexEntry[] = []
   for (const [, result] of results) {
-    for (const raw of result.media) {
-      const m = raw as { id: number; title: { romaji?: string | null; english?: string | null; native?: string | null }; coverImage: { large?: string | null }; format?: string | null; averageScore?: number | null }
-      const id = Number(m.id)
-      freshIds.add(id)
-      fresh.push({
-        id,
-        title: pickTitle(m.title),
-        season: result.season,
-        year: result.year,
-        coverImage: m.coverImage?.large ?? null,
-        format: m.format ?? null,
-        averageScore: m.averageScore ?? null,
-      })
+    updatedSeasons.add(`${result.season}:${result.year}`)
+    for (const m of result.media) {
+      fresh.push(toIndexEntry(m as IndexMedia, result.season, result.year))
     }
   }
 
-  // Merge: keep old entries not in the updated seasons, then add fresh ones
-  const merged = [...existing.filter((e) => !freshIds.has(e.id)), ...fresh]
-  console.log(`Search index: ${existing.length} → ${merged.length} entri (${fresh.length} baru/diupdate)`)
+  // Keep entries from untouched seasons; replace updated seasons with fresh data.
+  const kept = existing.filter((e) => !updatedSeasons.has(`${e.season}:${e.year}`))
+  const merged = [...kept, ...fresh]
+  console.log(
+    `Search index: ${existing.length} → ${merged.length} entri ` +
+      `(${fresh.length} di ${updatedSeasons.size} musim di-refresh, ${existing.length - kept.length} lama dibuang)`,
+  )
 
   if (!DRY_RUN) {
     await putKvPersist('anilist:search:v1:index', merged)
