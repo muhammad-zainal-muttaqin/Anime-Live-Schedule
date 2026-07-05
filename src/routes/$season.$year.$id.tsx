@@ -112,6 +112,7 @@ function DetailPending() {
 
 function DetailError({ error }: { error: Error }) {
   const close = useCloseModal()
+  console.error('DetailError', error)
   return (
     <ModalShell onClose={close}>
       <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
@@ -119,7 +120,7 @@ function DetailError({ error }: { error: Error }) {
           ⚠️
         </span>
         <p className="text-lg font-semibold text-ink">Gagal memuat detail</p>
-        <p className="max-w-sm text-sm text-ink-subtle">{error.message}</p>
+        <p className="max-w-sm text-sm text-ink-subtle">Coba refresh halaman atau tunggu beberapa saat.</p>
         <button
           type="button"
           onClick={close}

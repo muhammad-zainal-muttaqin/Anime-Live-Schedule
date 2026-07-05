@@ -6,6 +6,29 @@ const SEASONS = ['winter', 'spring', 'summer', 'fall'] as const
 
 const startHandler = createStartHandler(defaultStreamHandler)
 
+const SECURITY_HEADERS: Record<string, string> = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  "Content-Security-Policy":
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline'; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    'img-src \'self\' https: data:; ' +
+    "connect-src 'self' https://graphql.anilist.co; " +
+    "frame-ancestors 'none'; " +
+    "form-action 'self'; " +
+    "base-uri 'self'",
+}
+
+function withSecurityHeaders(response: Response): Response {
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    response.headers.set(key, value)
+  }
+  return response
+}
+
 function getCurrentSeason(now: Date) {
   const month = now.getUTCMonth()
   const year = now.getUTCFullYear()
@@ -48,18 +71,22 @@ export default {
     const url = new URL(request.url)
 
     if (url.pathname === '/robots.txt') {
-      return new Response(
-        `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml`,
-        { headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
+      return withSecurityHeaders(
+        new Response(
+          `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml`,
+          { headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
+        ),
       )
     }
 
     if (url.pathname === '/sitemap.xml') {
-      return new Response(generateSitemap(), {
-        headers: { 'Content-Type': 'application/xml; charset=utf-8' },
-      })
+      return withSecurityHeaders(
+        new Response(generateSitemap(), {
+          headers: { 'Content-Type': 'application/xml; charset=utf-8' },
+        }),
+      )
     }
 
-    return startHandler(request)
+    return withSecurityHeaders(await startHandler(request))
   },
 }

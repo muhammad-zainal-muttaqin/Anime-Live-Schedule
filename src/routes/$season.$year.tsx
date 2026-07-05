@@ -294,6 +294,7 @@ function SeasonPending() {
 function SeasonError({ error }: { error: Error }) {
   const { season, year } = useRouteSeason()
   const router = useRouter()
+  console.error('SeasonError', season, year, error)
   return (
     <PageShell season={season} year={year}>
       <div className="mx-auto mt-16 flex max-w-sm flex-col items-center gap-3 text-center">
@@ -301,7 +302,7 @@ function SeasonError({ error }: { error: Error }) {
           ⚠️
         </span>
         <p className="text-lg font-semibold text-ink">Gagal memuat data dari AniList</p>
-        <p className="text-sm text-ink-subtle">{error.message}</p>
+        <p className="text-sm text-ink-subtle">Coba refresh halaman atau tunggu beberapa saat.</p>
         <button
           type="button"
           onClick={() => router.invalidate()}
