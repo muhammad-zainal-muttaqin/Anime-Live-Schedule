@@ -1,3 +1,80 @@
+<!-- ============================================================
+  ARCHITECTURAL CONVENTIONS — read before editing any file.
+  ============================================================ -->
+
+# AnimeSeasons — arsitektur & konvensi
+
+## Stack
+- **Framework:** TanStack Start v1 (React 19, SSR via Cloudflare Workers)
+- **Routing:** TanStack Router file-based (`src/routes/`)
+- **Data fetching:** TanStack React Query + `createServerFn`
+- **Cache:** Cloudflare KV (seasonal snapshots, NOT AniList passthrough)
+- **CSS:** Tailwind CSS v4
+- **Build/deploy:** Vite → `pnpm deploy` (build + wrangler deploy)
+
+## AniList IP block (kritikal!)
+AniList memblokir IP range Cloudflare Workers (403). Worker TIDAK BOLEH fetch AniList
+langsung. Data masuk ke KV hanya lewat 2 jalur:
+1. Browser user di `/seed` page (fetch AniList → `seedSeason` server fn → KV)
+2. Script `scripts/seed-all.ts` (dijalankan lokal dari non-Worker IP)
+
+Lihat `src/server/anilist.ts:6-15` untuk detailnya.
+
+## Custom server entry (`src/entry-server.ts`)
+Worker entry point. Mencegat request sebelum TanStack Router:
+- `/robots.txt` → return `text/plain` langsung
+- `/sitemap.xml` → generate XML dari semua season (1960–sekarang+1)
+- Sisanya → `startHandler(request)` (TanStack Start SSR)
+
+Didaftarkan di `vite.config.ts` via `tanstackStart({ server: { entry: './src/entry-server.ts' } })`.
+
+## KV cache keys
+Format: `anilist:season:v2:{season}:{year}`
+- `v2` menandai snapshot yang berisi `source` field + `description` sudah
+  ditruncate via `stripHtml` + `truncatePlain`
+- TTL: 30 hari (`SEASONAL_TTL_SECONDS` di `src/server/anilist.ts`)
+- Old v1 keys dihapus saat re-seed (lihat `scripts/seed-all.ts`)
+
+## SEO — per-route head
+Setiap route harus punya `head` dengan title/description/og unik:
+- `$season.$year.tsx`: `head` pakai `params.season` + `params.year`
+- `$season.$year.$id.tsx`: `loader` cari anime dari seasonal data, lalu
+  `head` pakai `loaderData?.anime` untuk title + description
+- Jangan tambah meta duplikat di `__root.tsx` — root jadi fallback default
+
+## File naming (literal dots di URL)
+Untuk route dengan titik literal (`.xml`, `.txt`), gunakan bracket escape:
+- `sitemap[.]xml.tsx` → `/sitemap.xml`
+- `robots[.]txt.tsx` → `/robots.txt`
+Jalankan `pnpm generate-routes` setelah buat/rename file route.
+
+## Live countdown
+Gunakan `useNow()` dari `#/lib/hooks` (default interval 1 detik) komponen
+yang perlu timer. Call `formatTimeUntil(airingAt, now)` — selalu kirim
+`now` dari hook, bukan `Date.now()` default.
+
+## Data flow seasonal page
+1. SSR: `loader` → `ensureQueryData` → server fn `getSeasonalAnime`
+2. Server fn: baca KV → kalau ada, return. Kalau tidak ada (cold season),
+   return empty → client fetch langsung dari AniList (browser IP, aman)
+3. Cache miss di browser: `fetchSeasonalPaged` via `seasonalQueryOptions`
+   `queryFn` → render → selesai. Data TIDAK di-write ke KV dari sini.
+
+## Detail page
+Fetch dari AniList langsung (browser only — `enabled: typeof window !== 'undefined'`).
+Worker gak bisa fetch detail. Modal di-render via `Outlet` di seasonal page.
+
+## Scripts
+- `scripts/seed-all.ts`: bulk seed 1960–2027 ke KV. JALANKAN DARI LOKAL,
+  bukan dari Worker. Pakai `node --experimental-strip-types`.
+- `pnpm seed`: alias untuk development seed.
+- Jangan import file dengan `#/` alias di script — Node gak bisa resolve.
+  Duplikasi helper inline (lihat `stripHtml`/`truncatePlain` di seed-all.ts).
+
+<!-- ============================================================
+  TanStack Intent skills (jangan dihapus)
+  ============================================================ -->
+
 <!-- intent-skills:start -->
 # TanStack Intent - before editing files, run the matching guidance command.
 tanstackIntent:
