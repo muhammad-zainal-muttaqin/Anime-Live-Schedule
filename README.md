@@ -27,7 +27,7 @@ dukungan `prefers-reduced-motion`, dan fokus keyboard di tiap kontrol. Token ada
 
 > **Penting:** AniList memblokir rentang IP Cloudflare Workers (balas `403 "manually
 > blocked"`). Jadi **Worker tidak pernah fetch AniList langsung** — ia hanya baca/tulis
-> Cloudflare KV. Data masuk ke KV dari IP yang tidak diblokir: **browser kamu**.
+> Cloudflare KV. Data masuk ke KV dari IP yang tidak diblokir.
 
 ```
                     ┌── baca KV (hit) ──▶ render cepat (SSR)
@@ -35,21 +35,23 @@ Worker ─────────────┤
                     └── KV kosong (cold) ─▶ browser fetch AniList langsung
                                              (IP kamu, CORS *; bukan Worker)
 
-Refresh:  /seed (browser fetch AniList) ──▶ seedSeason (tulis KV)
+Refresh: GitHub Actions cron (tiap 3 jam) ──▶ fetch AniList ──▶ tulis KV via REST API
 ```
 
-- **Baca:** `getSeasonalAnime(season, year)` → key `anilist:season:{season}:{year}`.
+- **Baca:** `getSeasonalAnime(season, year)` → key `anilist:season:v2:{season}:{year}`.
   Hanya membaca KV di produksi. Kalau kosong, browser yang fetch (lihat `src/lib/queries.ts`).
-- **Tulis (seed manual):** buka `/seed?token=…` di browser. Halaman ini fetch tiap musim
-  dari AniList lewat browser kamu, lalu memanggil server function `seedSeason` yang
-  menyimpannya ke KV (TTL **30 hari**). Guarded oleh secret `SEED_TOKEN`.
+- **Tulis (otomatis):** GitHub Actions cron setiap 3 jam (`seed-recent.yml`) menjalankan
+  `scripts/seed-recent.ts` — fetch musim sekarang + 4 musim ke depan dari AniList,
+  lalu tulis langsung ke Cloudflare KV via REST API (TTL **30 hari**).
+- **Tulis (bulk):** `scripts/seed-all.ts` untuk seed semua musim 1960–tahun depan
+  (dijalankan sekali dari lokal).
 - **Detail judul:** selalu di-fetch dari browser (`fetchAnimeDetail`), tidak lewat Worker.
 - Di **dev lokal** tidak ada blokir IP, jadi cache miss boleh fetch AniList langsung
   supaya DX mulus.
 
-Kode data layer: `src/server/anilist.ts` (KV read + `seedSeason`), `src/lib/anilist/client.ts`
+Kode data layer: `src/server/anilist.ts` (KV read), `src/lib/anilist/client.ts`
 (fetch AniList untuk browser/dev), `src/lib/anilist/*` (query, tipe, helper musim),
-`src/lib/queries.ts` (React Query options), `src/routes/seed.tsx` (halaman seed).
+`src/lib/queries.ts` (React Query options).
 
 ## Cara mengisi & refresh data
 
@@ -66,14 +68,10 @@ izin **Workers KV Storage: Edit**). Musim kosong dilewati; musim lama tak pernah
 cukup sekali. Setelah ini **setiap musim yang bisa dipilih user sudah ada di KV** — pengunjung
 tidak pernah memicu fetch AniList.
 
-**Rutin — refresh musim berjalan & mendatang** lewat halaman `/seed`:
-
-1. Set secret sekali saja (nilai bebas, rahasiakan):
-   ```bash
-   pnpm wrangler secret put SEED_TOKEN
-   ```
-2. Buka `https://<domain-kamu>/seed?token=<SEED_TOKEN>` → klik **Seed sekarang**. Browser
-   mengambil musim sekarang + 4 musim ke depan (skor/jadwal yang masih berubah) lalu menyimpannya ke KV.
+**Otomatis — refresh musim berjalan & mendatang** via GitHub Actions cron:
+`.github/workflows/seed-recent.yml` berjalan tiap **3 jam**, menjalankan
+`scripts/seed-recent.ts`. Data musim sekarang + 4 musim ke depan diperbarui langsung
+ke Cloudflare KV via REST API, tanpa perlu browser atau token rahasia.
 
 ## Rute
 
@@ -82,7 +80,7 @@ tidak pernah memicu fetch AniList.
 | `/`                  | redirect ke musim & tahun berjalan      |
 | `/$season/$year`     | grid anime + picker musim/tahun         |
 | `/$season/$year/$id` | modal detail (bisa di-deep-link / SSR)  |
-| `/seed?token=…`      | halaman refresh: browser isi KV (guarded)|
+| `/seed`              | (dinonaktifkan — dulu untuk seed manual)|
 
 `season` = `winter` \| `spring` \| `summer` \| `fall`.
 
@@ -122,11 +120,10 @@ Akun: `Mzainalmuttaqin6@gmail.com`. KV namespace `CACHE` id: `57122047ffca4a4c96
 Auth sudah lewat env di atas, jadi langsung:
 
 ```bash
-pnpm wrangler secret put SEED_TOKEN   # sekali saja, untuk /seed
-pnpm run deploy                       # = vite build && wrangler deploy
+pnpm run deploy                       # = vite build + wrangler deploy
 ```
 
-Setelah deploy, warm cache sekali via halaman **`/seed`** (lihat "Cara refresh data").
+Cache diisi otomatis oleh GitHub Actions cron setiap 3 jam — tidak perlu warm manual.
 
 > Untuk dev lokal, `id` KV apa pun sudah cukup — Miniflare tidak butuh id asli.
 
