@@ -30,6 +30,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
       - name: Commit search-index.json
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -37,8 +38,28 @@ jobs:
           git add public/search-index.json
           if git diff --cached --quiet; then
             echo "No changes to commit"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "chore: update search index [skip ci]"
             git pull --rebase
             git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
+
+      # The committed search-index.json is a static build asset — it only reaches
+      # the live worker on a deploy. Redeploy when it changed so the search page
+      # stays in sync (KV grid/countdown is read at runtime, needs no deploy).
+      - name: Setup pnpm
+        if: steps.commit.outputs.changed == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Build & deploy to Cloudflare
+        if: steps.commit.outputs.changed == 'true'
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
