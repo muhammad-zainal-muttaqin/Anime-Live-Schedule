@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { ArrowLeft, Search, Tv, X } from 'lucide-react'
+import { getCurrentSeason } from '#/lib/anilist/season'
 import { normalizeText } from '#/lib/text'
 import type { SearchIndexEntry } from '#/lib/anilist/types'
 
@@ -48,7 +49,7 @@ function rankOf(hay: string[], nq: string, year: number): number {
   for (const h of hay) {
     if (h === nq) return RANK_EXACT
     if (h.startsWith(nq)) best = Math.min(best, RANK_PREFIX)
-    else if (`${' '}${h}`.includes(`${' '}${nq}`)) best = Math.min(best, RANK_WORD)
+    else if (` ${h}`.includes(` ${nq}`)) best = Math.min(best, RANK_WORD)
     else if (h.includes(nq)) best = Math.min(best, RANK_SUBSTR)
   }
   if (best === NO_MATCH && /^\d{2,4}$/.test(nq) && String(year).includes(nq)) {
@@ -57,12 +58,20 @@ function rankOf(hay: string[], nq: string, year: number): number {
   return best
 }
 
+/** Back to wherever the user came from, or home if they deep-linked here. */
 function BackButton() {
   const router = useRouter()
+  const onBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.history.back()
+    } else {
+      void router.navigate({ to: '/' })
+    }
+  }
   return (
     <button
       type="button"
-      onClick={() => router.history.back()}
+      onClick={onBack}
       className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-ink-muted transition hover:bg-surface hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
       aria-label="Kembali"
     >
@@ -77,6 +86,9 @@ function SearchPage() {
   const [index, setIndex] = useState<SearchIndexEntry[] | null>(null)
   const [failed, setFailed] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  // Tint the cross-season page with the current season's accent for continuity
+  // with the schedule the user just came from.
+  const season = useMemo(() => getCurrentSeason().season, [])
 
   // Load the static index once on mount.
   useEffect(() => {
@@ -137,91 +149,132 @@ function SearchPage() {
     inputRef.current?.focus()
   }, [])
 
-  const trimmed = q.trim()
-  const searching = trimmed.length >= 2
-  // "Loading" only while a query is pending and the index hasn't arrived yet.
-  const loading = searching && !index && !failed
+  const searching = q.trim().length >= 2
 
   return (
-    <div className="season-ambient min-h-dvh bg-bg" data-season="spring">
-      <div className={`${CONTAINER} pt-6`}>
-        <header className="flex items-center gap-3">
-          <BackButton />
-          <Link
-            to="/"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent-strong text-accent-ink shadow-lg shadow-black/30 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
-            aria-label="Beranda"
-          >
-            <Tv className="h-5 w-5" />
-          </Link>
-          <Link to="/" className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring rounded">
-            <h1 className="text-lg font-bold tracking-tight text-ink">Cari anime</h1>
-          </Link>
-        </header>
+    <div className="season-ambient min-h-dvh bg-bg" data-season={season}>
+      {/* Header + search field stick to the top so results scroll under them. */}
+      <div className="sticky top-0 z-30 border-b border-border bg-canvas/80 backdrop-blur-md">
+        <div className={`${CONTAINER} py-4`}>
+          <header className="flex items-center gap-3">
+            <BackButton />
+            <Link
+              to="/"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent-strong text-accent-ink shadow-lg shadow-black/30 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
+              aria-label="Beranda"
+            >
+              <Tv className="h-5 w-5" />
+            </Link>
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold leading-tight tracking-tight text-ink">Cari anime</h1>
+              <p className="truncate text-xs text-ink-subtle">Semua musim · data AniList</p>
+            </div>
+          </header>
+
+          <div className="relative mt-3">
+            <Search aria-hidden className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-ink-muted" />
+            <input
+              ref={inputRef}
+              type="text"
+              enterKeyHint="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Judul apa pun — Jepang, Inggris, atau singkatan…"
+              autoComplete="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              className="w-full rounded-xl border border-border bg-surface py-3 pl-12 pr-10 text-[15px] text-ink shadow-sm outline-none transition placeholder:text-ink-muted focus:border-accent-ring focus:ring-2 focus:ring-accent-soft"
+            />
+            {q && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQ('')
+                  inputRef.current?.focus()
+                }}
+                aria-label="Hapus pencarian"
+                className="absolute right-2.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg text-ink-muted transition hover:bg-surface-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
-      <div className={`${CONTAINER} mt-8`}>
-        <div className="relative mx-auto max-w-xl">
-          <Search aria-hidden className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-ink-muted" />
-          <input
-            ref={inputRef}
-            type="text"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Cari judul apa pun — Jepang, Inggris, atau singkatan…"
-            autoComplete="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            className="w-full rounded-xl border border-border bg-surface py-3 pl-12 pr-10 text-sm text-ink outline-none placeholder:text-ink-muted focus:border-accent-ring focus:ring-2 focus:ring-accent-ring"
-          />
-          {q && (
-            <button
-              type="button"
-              onClick={() => setQ('')}
-              aria-label="Hapus pencarian"
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-ink-muted transition hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-
+      <div className={`${CONTAINER} py-6`}>
         {failed ? (
-          <div className="mt-16 text-center text-sm text-ink-subtle">
-            Gagal memuat indeks pencarian. Coba refresh halaman.
-          </div>
-        ) : loading ? (
-          <div className="mt-8 text-center text-sm text-ink-muted">Mencari…</div>
+          <EmptyMessage title="Gagal memuat indeks pencarian" body="Coba refresh halaman sebentar lagi." />
         ) : searching ? (
-          results.length > 0 ? (
+          !index ? (
+            <PosterSkeletonGrid />
+          ) : results.length > 0 ? (
             <>
-              <p className="mt-6 text-sm text-ink-subtle">
-                <span className="font-semibold tabular-nums text-ink-muted">{results.length}</span> judul
-                {results.length === MAX_RESULTS ? ' teratas' : ''}
-              </p>
-              <div className={`mt-5 ${GRID}`}>
+              <SectionLabel>
+                <span className="font-semibold tabular-nums text-ink-muted">{results.length}</span>
+                {results.length === MAX_RESULTS ? ' judul teratas' : ' judul'}
+              </SectionLabel>
+              <div className={`animate-fade-in mt-4 ${GRID}`}>
                 {results.map((anime) => (
                   <SearchCard key={anime.id} anime={anime} />
                 ))}
               </div>
             </>
           ) : (
-            <div className="mt-16 text-center text-sm text-ink-subtle">
-              Tidak ada judul yang cocok dengan “{q}”
-            </div>
+            <EmptyMessage
+              title="Tidak ada judul yang cocok"
+              body={`Tidak ada hasil untuk “${q.trim()}”. Coba ejaan lain atau judul alternatifnya.`}
+            />
           )
-        ) : popular.length > 0 ? (
+        ) : (
           <>
-            <p className="mt-6 text-sm font-medium text-ink-muted">Populer</p>
-            <div className={`mt-5 ${GRID}`}>
-              {popular.map((anime) => (
-                <SearchCard key={anime.id} anime={anime} />
-              ))}
-            </div>
+            <SectionLabel>Populer</SectionLabel>
+            {!index ? (
+              <PosterSkeletonGrid />
+            ) : (
+              <div className={`animate-fade-in mt-4 ${GRID}`}>
+                {popular.map((anime) => (
+                  <SearchCard key={anime.id} anime={anime} />
+                ))}
+              </div>
+            )}
           </>
-        ) : null}
+        )}
       </div>
     </div>
+  )
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <p className="text-sm text-ink-subtle">{children}</p>
+}
+
+function EmptyMessage({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="mx-auto mt-16 flex max-w-sm flex-col items-center gap-2 text-center">
+      <span className="mb-1 grid h-12 w-12 place-items-center rounded-2xl bg-surface ring-1 ring-border">
+        <Search aria-hidden className="h-6 w-6 text-ink-subtle" />
+      </span>
+      <p className="text-lg font-semibold text-ink">{title}</p>
+      <p className="text-sm text-pretty text-ink-subtle">{body}</p>
+    </div>
+  )
+}
+
+function PosterSkeletonGrid() {
+  return (
+    <>
+      <div className="h-4 w-24 animate-pulse rounded bg-surface" />
+      <div className={`mt-4 ${GRID}`}>
+        {Array.from({ length: 12 }).map((_, i) => (
+          <div key={i}>
+            <div className="aspect-[2/3] animate-pulse rounded-2xl bg-surface-2" />
+            <div className="mt-2 h-3.5 w-4/5 animate-pulse rounded bg-surface-2" />
+            <div className="mt-1.5 h-3 w-1/2 animate-pulse rounded bg-surface" />
+          </div>
+        ))}
+      </div>
+    </>
   )
 }
 
