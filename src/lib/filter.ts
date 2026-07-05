@@ -30,6 +30,7 @@ export interface SeasonSearch {
   sort?: SortKey
   dir?: SortDir
   view?: ViewMode
+  includeAdult?: boolean
 }
 
 /** Fully-resolved filter state the UI works with. */
@@ -40,6 +41,7 @@ export interface SeasonFilters {
   sort: SortKey
   dir: SortDir
   view: ViewMode
+  includeAdult: boolean
 }
 
 /** The direction each sort key naturally reads in (stripped from the URL). */
@@ -58,6 +60,7 @@ export const FILTER_DEFAULTS = {
   genre: '',
   sort: 'popularity',
   view: 'grid',
+  includeAdult: false,
 } as const
 
 function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T | undefined {
@@ -79,7 +82,8 @@ export function parseSearch(raw: Record<string, unknown>): SeasonSearch {
   const rawDir = oneOf(raw.dir, SORT_DIRS)
   const dir = rawDir === NATURAL_DIR[sort] ? undefined : rawDir
   const view = oneOf(raw.view, VIEW_MODES) ?? 'grid'
-  return { q, format, genre, sort, dir, view }
+  const includeAdult = raw.includeAdult === true
+  return { q, format, genre, sort, dir, view, includeAdult }
 }
 
 /** Fill defaults and split the genre list. */
@@ -92,6 +96,7 @@ export function resolveFilters(search: SeasonSearch): SeasonFilters {
     sort,
     dir: search.dir ?? NATURAL_DIR[sort],
     view: search.view ?? 'grid',
+    includeAdult: search.includeAdult ?? false,
   }
 }
 
@@ -102,7 +107,8 @@ export function hasActiveFilters(filters: SeasonFilters): boolean {
     filters.format !== 'all' ||
     filters.genres.length > 0 ||
     filters.sort !== 'popularity' ||
-    filters.dir !== NATURAL_DIR[filters.sort]
+    filters.dir !== NATURAL_DIR[filters.sort] ||
+    filters.includeAdult
   )
 }
 
@@ -113,6 +119,7 @@ export const RESET_PATCH: SeasonSearch = {
   genre: '',
   sort: 'popularity',
   dir: undefined,
+  includeAdult: undefined,
 }
 
 /** Toggle one genre in the comma-joined `genre` param. */
@@ -219,6 +226,7 @@ export function applyFilters(media: AnimeMedia[], filters: SeasonFilters): Anime
   return media
     .filter(
       (m) =>
+        (filters.includeAdult || !m.isAdult) &&
         (filters.format === 'all' || formatBucketOf(m.format) === filters.format) &&
         matchesSearch(m, filters.q) &&
         matchesGenres(m, filters.genres),

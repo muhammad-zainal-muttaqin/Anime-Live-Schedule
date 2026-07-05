@@ -40,7 +40,6 @@ export const SEASONAL_QUERY = `
         seasonYear: $seasonYear
         type: ANIME
         sort: POPULARITY_DESC
-        isAdult: false
       ) {
         ${MEDIA_CARD_FIELDS}
       }

@@ -16,9 +16,7 @@ import type { AnimeDetail, AnimeMedia, PageInfo, SeasonalResult } from '#/lib/an
 
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
 const PER_PAGE = 50
-// 6 × 50 = 300 titles: more than any real season, so this pages the whole
-// season while bounding worst-case work.
-const MAX_PAGES = 6
+const ANILIST_PACING_MS = 400 // be nice to AniList rate limiter
 
 interface GraphQLResponse<T> {
   data: T | null
@@ -105,7 +103,8 @@ export async function fetchSeasonalPaged(season: Season, year: number): Promise<
     )
     pageInfo = payload.Page.pageInfo
     page++
-  } while (pageInfo.hasNextPage && page <= MAX_PAGES)
+    await sleep(ANILIST_PACING_MS)
+  } while (pageInfo.hasNextPage)
 
   return { pageInfo, media, fetchedAt: Date.now() }
 }
