@@ -9,7 +9,8 @@ import type { SeasonalResult } from '#/lib/anilist/types'
  * IMPORTANT: AniList blocks the shared Cloudflare Workers IP range (403), so the
  * Worker must never fetch AniList directly. Everything here only ever reads from
  * or writes to KV. Fresh data reaches KV two ways, both from non-blocked IPs:
- *   - the manual /seed page (your browser fetches AniList, then calls `seedSeason`)
+ *   - the GitHub Actions cron (`.github/workflows/seed-recent.yml` —
+ *     fetches AniList, writes directly to KV via REST API)
  *   - the on-demand browser fallback in `src/lib/queries.ts`
  * In local dev there's no IP block, so a cache miss is allowed to fetch AniList
  * to keep the DX smooth.
@@ -40,15 +41,22 @@ async function getCache(): Promise<KVNamespace | undefined> {
   }
 }
 
-/** The shared secret that guards `seedSeason`. Set via `wrangler secret put SEED_TOKEN`. */
-async function getSeedToken(): Promise<string | undefined> {
-  try {
-    const { env } = await import('cloudflare:workers')
-    return (env as { SEED_TOKEN?: string }).SEED_TOKEN
-  } catch {
-    return undefined
-  }
-}
+// ── DISABLED ─────────────────────────────────────────────────────
+// Dulu: guard untuk seedSeason (token via wrangler secret).
+// Sekarang seeding otomatis via GitHub Actions cron, jadi fungsi
+// ini gak dipakai. Kalau suatu saat `/seed` diaktifkan lagi,
+// cukup uncomment kode di bawah + bagian seedSeason.
+//
+// /** The shared secret that guards `seedSeason`. Set via `wrangler secret put SEED_TOKEN`. */
+// async function getSeedToken(): Promise<string | undefined> {
+//   try {
+//     const { env } = await import('cloudflare:workers')
+//     return (env as { SEED_TOKEN?: string }).SEED_TOKEN
+//   } catch {
+//     return undefined
+//   }
+// }
+// ─────────────────────────────────────────────────────────────────
 
 async function kvGetJson<T>(key: string): Promise<T | null> {
   const cache = await getCache()
@@ -115,39 +123,38 @@ export const getSeasonalAnime = createServerFn({ method: 'GET' })
     return EMPTY_RESULT
   })
 
-interface SeedInput {
-  token: string
-  season: string
-  year: number
-  result: SeasonalResult
-}
-
-/**
- * Write a browser-fetched season into KV. Guarded by SEED_TOKEN so only the
- * /seed page (which knows the token) can populate the cache. The handler itself
- * never touches AniList — it only stores what the caller already fetched.
- */
-export const seedSeason = createServerFn({ method: 'POST' })
-  .validator((input: SeedInput): { token: string; season: Season; year: number; result: SeasonalResult } => {
-    if (!isSeason(input.season)) throw new Error(`Invalid season: ${input.season}`)
-    const year = Number(input.year)
-    if (!Number.isInteger(year) || year < 1940 || year > 2100) {
-      throw new Error(`Invalid year: ${input.year}`)
-    }
-    if (!input.result || !Array.isArray(input.result.media)) {
-      throw new Error('Missing seed payload')
-    }
-    return { token: String(input.token ?? ''), season: input.season, year, result: input.result }
-  })
-  .handler(async ({ data }): Promise<{ ok: true; count: number }> => {
-    const expected = await getSeedToken()
-    // In dev there may be no token configured; allow seeding then. In prod a
-    // missing/incorrect token is rejected.
-    if (!import.meta.env.DEV) {
-      if (!expected) throw new Error('SEED_TOKEN is not configured on the server')
-      if (data.token !== expected) throw new Error('Unauthorized')
-    }
-
-    await kvPutJson(seasonKey(data.season, data.year), data.result, SEASONAL_TTL_SECONDS)
-    return { ok: true, count: data.result.media.length }
-  })
+// ── DISABLED ─────────────────────────────────────────────────────
+// SeedInput + seedSeason dulu dipakai oleh /seed page. Sekarang
+// seeding via GitHub Actions cron langsung ke KV REST API, jadi
+// endpoint server ini dinonaktifkan. Kalau mau diaktifkan lagi,
+// uncomment blok di bawah + bagian getSeedToken() di atas.
+//
+// interface SeedInput {
+//   token: string
+//   season: string
+//   year: number
+//   result: SeasonalResult
+// }
+//
+// export const seedSeason = createServerFn({ method: 'POST' })
+//   .validator((input: SeedInput): { token: string; season: Season; year: number; result: SeasonalResult } => {
+//     if (!isSeason(input.season)) throw new Error(`Invalid season: ${input.season}`)
+//     const year = Number(input.year)
+//     if (!Number.isInteger(year) || year < 1940 || year > 2100) {
+//       throw new Error(`Invalid year: ${input.year}`)
+//     }
+//     if (!input.result || !Array.isArray(input.result.media)) {
+//       throw new Error('Missing seed payload')
+//     }
+//     return { token: String(input.token ?? ''), season: input.season, year, result: input.result }
+//   })
+//   .handler(async ({ data }): Promise<{ ok: true; count: number }> => {
+//     const expected = await getSeedToken()
+//     if (!import.meta.env.DEV) {
+//       if (!expected) throw new Error('SEED_TOKEN is not configured on the server')
+//       if (data.token !== expected) throw new Error('Unauthorized')
+//     }
+//     await kvPutJson(seasonKey(data.season, data.year), data.result, SEASONAL_TTL_SECONDS)
+//     return { ok: true, count: data.result.media.length }
+//   })
+// ─────────────────────────────────────────────────────────────────

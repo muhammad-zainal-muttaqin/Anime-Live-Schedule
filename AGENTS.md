@@ -15,7 +15,8 @@
 ## AniList IP block (kritikal!)
 AniList memblokir IP range Cloudflare Workers (403). Worker TIDAK BOLEH fetch AniList
 langsung. Data masuk ke KV hanya lewat 2 jalur:
-1. Browser user di `/seed` page (fetch AniList → `seedSeason` server fn → KV)
+1. GitHub Actions cron (`.github/workflows/seed-recent.yml`) — fetch AniList dari
+   runner IP (aman), tulis langsung ke KV via REST API
 2. Script `scripts/seed-all.ts` (dijalankan lokal dari non-Worker IP)
 
 Lihat `src/server/anilist.ts:6-15` untuk detailnya.
