@@ -27,6 +27,8 @@ const MEDIA_CARD_FIELDS = `
   studios(isMain: true) { nodes { id name } }
   nextAiringEpisode { airingAt timeUntilAiring episode }
   isAdult
+  source(version: 3)
+  description(asHtml: false)
 `
 
 export const SEASONAL_QUERY = `
@@ -50,10 +52,8 @@ export const DETAIL_QUERY = `
   query Detail($id: Int) {
     Media(id: $id, type: ANIME) {
       ${MEDIA_CARD_FIELDS}
-      description(asHtml: false)
       trailer { id site thumbnail }
       siteUrl
-      source
       hashtag
       externalLinks { id url site type color icon language }
       relations {

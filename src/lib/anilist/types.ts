@@ -49,6 +49,10 @@ export interface AnimeMedia {
   studios: { nodes: Studio[] }
   nextAiringEpisode: NextAiringEpisode | null
   isAdult: boolean
+  /** Optional: season snapshots cached before these fields existed lack them. */
+  source?: string | null
+  /** Plain text, truncated for the card/list preview (full text on detail). */
+  description?: string | null
 }
 
 export interface AniListTrailer {

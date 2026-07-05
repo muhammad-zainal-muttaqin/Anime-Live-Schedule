@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SeedRouteImport } from './routes/seed'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SeasonYearRouteImport } from './routes/$season.$year'
 import { Route as SeasonYearIdRouteImport } from './routes/$season.$year.$id'
 
+const SeedRoute = SeedRouteImport.update({
+  id: '/seed',
+  path: '/seed',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,35 +37,46 @@ const SeasonYearIdRoute = SeasonYearIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/seed': typeof SeedRoute
   '/$season/$year': typeof SeasonYearRouteWithChildren
   '/$season/$year/$id': typeof SeasonYearIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/seed': typeof SeedRoute
   '/$season/$year': typeof SeasonYearRouteWithChildren
   '/$season/$year/$id': typeof SeasonYearIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/seed': typeof SeedRoute
   '/$season/$year': typeof SeasonYearRouteWithChildren
   '/$season/$year/$id': typeof SeasonYearIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/$season/$year' | '/$season/$year/$id'
+  fullPaths: '/' | '/seed' | '/$season/$year' | '/$season/$year/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$season/$year' | '/$season/$year/$id'
-  id: '__root__' | '/' | '/$season/$year' | '/$season/$year/$id'
+  to: '/' | '/seed' | '/$season/$year' | '/$season/$year/$id'
+  id: '__root__' | '/' | '/seed' | '/$season/$year' | '/$season/$year/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SeedRoute: typeof SeedRoute
   SeasonYearRoute: typeof SeasonYearRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/seed': {
+      id: '/seed'
+      path: '/seed'
+      fullPath: '/seed'
+      preLoaderRoute: typeof SeedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -98,6 +115,7 @@ const SeasonYearRouteWithChildren = SeasonYearRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SeedRoute: SeedRoute,
   SeasonYearRoute: SeasonYearRouteWithChildren,
 }
 export const routeTree = rootRouteImport

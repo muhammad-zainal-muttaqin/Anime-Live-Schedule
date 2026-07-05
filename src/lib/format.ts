@@ -49,6 +49,38 @@ export function formatFormat(format: string | null): string {
   return FORMAT_LABELS[format] ?? format
 }
 
+const SOURCE_LABELS: Record<string, string> = {
+  ORIGINAL: 'Original',
+  MANGA: 'Manga',
+  LIGHT_NOVEL: 'Light Novel',
+  VISUAL_NOVEL: 'Visual Novel',
+  VIDEO_GAME: 'Game',
+  NOVEL: 'Novel',
+  WEB_NOVEL: 'Web Novel',
+  DOUJINSHI: 'Doujinshi',
+  MULTIMEDIA_PROJECT: 'Multimedia',
+  PICTURE_BOOK: 'Picture Book',
+  COMIC: 'Comic',
+  GAME: 'Game',
+  ANIME: 'Anime',
+  LIVE_ACTION: 'Live Action',
+  OTHER: 'Lainnya',
+}
+
+/** Human label for AniList's MediaSource enum, or null when unknown. */
+export function formatSource(source: string | null | undefined): string | null {
+  if (!source) return null
+  return SOURCE_LABELS[source] ?? null
+}
+
+/** "12 eps × 24m", or whichever half is known; null when neither is. */
+export function formatEpsDuration(episodes: number | null, duration: number | null): string | null {
+  const eps = episodes ? `${episodes} eps` : null
+  const mins = duration ? `${duration}m` : null
+  if (eps && mins) return `${eps} × ${mins}`
+  return eps ?? mins
+}
+
 /** AniList averageScore is 0–100. Render as a 0–10 rating string, or null. */
 export function formatScore(averageScore: number | null): string | null {
   if (averageScore == null) return null

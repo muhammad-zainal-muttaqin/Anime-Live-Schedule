@@ -5,18 +5,16 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
 
-  // KV namespace used as the AniList response cache. This is what keeps us
-  // under AniList's 90 req/min limit: browsers hit KV, not AniList.
+  // KV namespace used as the AniList cache. The Worker only ever reads/writes
+  // KV — it never fetches AniList (that IP range is blocked). Data is put here
+  // by scripts/seed-all.ts (all seasons) and the /seed page (current + upcoming).
   //
   // For local dev (`pnpm dev`) the Cloudflare Vite plugin emulates this with
-  // Miniflare, so the placeholder id below is fine.
-  //
-  // Before deploying, create a real namespace and paste its id here:
-  //   pnpm wrangler kv namespace create CACHE
+  // Miniflare, so any id works locally. The id below is the real CACHE namespace.
   "kv_namespaces": [
     {
       "binding": "CACHE",
-      "id": "0000000000000000000000000000000000"
+      "id": "57122047ffca4a4c9697df42427760bf"
     }
   ],
 

@@ -14,20 +14,25 @@ export interface RouterContext {
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'Anime Seasons — Jadwal Tayang per Musim' },
-      {
-        name: 'description',
-        content:
-          'Daftar anime per musim dan tahun, lengkap dengan jadwal tayang episode terbaru. Data dari AniList.',
-      },
-      { name: 'theme-color', content: '#0b0b12' },
-    ],
-    links: [{ rel: 'stylesheet', href: appCss }],
-  }),
+  head: () => {
+    const title = 'AnimeSeasons — Jadwal Tayang Anime per Musim'
+    const description =
+      'Daftar anime per musim dan tahun, lengkap dengan jadwal tayang episode terbaru. Data dari AniList, cepat karena di-cache.'
+    return {
+      meta: [
+        { charSet: 'utf-8' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        { title },
+        { name: 'description', content: description },
+        { name: 'theme-color', content: '#0b0d13' },
+        { property: 'og:type', content: 'website' },
+        { property: 'og:title', content: title },
+        { property: 'og:description', content: description },
+        { name: 'twitter:card', content: 'summary_large_image' },
+      ],
+      links: [{ rel: 'stylesheet', href: appCss }],
+    }
+  },
   shellComponent: RootDocument,
 })
 
@@ -39,15 +44,17 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
-        <TanStackDevtools
-          config={{ position: 'bottom-right' }}
-          plugins={[
-            {
-              name: 'Tanstack Router',
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
+        {import.meta.env.DEV ? (
+          <TanStackDevtools
+            config={{ position: 'bottom-right' }}
+            plugins={[
+              {
+                name: 'Tanstack Router',
+                render: <TanStackRouterDevtoolsPanel />,
+              },
+            ]}
+          />
+        ) : null}
         <Scripts />
       </body>
     </html>

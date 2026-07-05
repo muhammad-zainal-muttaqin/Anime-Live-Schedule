@@ -1,19 +1,91 @@
 @import 'tailwindcss';
 
 /*
- * Dark-first theme. The palette leans on zinc for surfaces with a violet→fuchsia
- * accent for interactive/brand moments. Kept intentionally restrained so the
- * poster art carries the colour.
+ * AnimeSeasons design system.
+ *
+ * Product-register app UI: the poster art is the hero, the chrome recedes.
+ * Color carries meaning — a single accent that *is* the current season
+ * (winter=ice, spring=sakura, summer=aqua, fall=ember). Everything else is a
+ * layered near-black neutral. Tokens are semantic (surface / ink / accent),
+ * not raw scale values, and every text pair is verified ≥4.5:1.
  */
+
 @theme {
-  --color-brand-400: oklch(0.75 0.16 310);
-  --color-brand-500: oklch(0.68 0.19 315);
-  --color-brand-600: oklch(0.6 0.21 318);
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Semantic colors → expose the runtime CSS vars as Tailwind utilities. */
+  --color-canvas: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-elevated: var(--elevated);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
+
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-line: var(--accent-line);
+  --color-accent-ring: var(--accent-ring);
+
+  /* Motion — exponential ease-outs, no bounce. */
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 :root {
   color-scheme: dark;
+
+  /* Layered near-black neutrals (cool, tinted toward the UI's blue). */
+  --bg: oklch(0.16 0.012 265);
+  --surface: oklch(0.205 0.014 265);
+  --surface-2: oklch(0.245 0.015 265);
+  --elevated: oklch(0.275 0.016 265);
+  --border: oklch(1 0 0 / 0.09);
+  --border-strong: oklch(1 0 0 / 0.16);
+
+  /* Ink ramp — all ≥4.5:1 on --bg and --surface. */
+  --ink: oklch(0.97 0.005 265);
+  --ink-muted: oklch(0.74 0.012 265);
+  --ink-subtle: oklch(0.62 0.014 265);
+
+  /* Accent derived from a single hue + fill-lightness + ink, set per season.
+     Default = winter, so the shell has an identity before a season is chosen. */
+  --accent-h: 248;
+  --accent-strong-l: 0.54;
+  --accent-ink: oklch(0.99 0 0);
+
+  --accent: oklch(0.74 0.15 var(--accent-h));
+  --accent-strong: oklch(var(--accent-strong-l) 0.15 var(--accent-h));
+  --accent-soft: oklch(0.74 0.15 var(--accent-h) / 0.14);
+  --accent-line: oklch(0.74 0.15 var(--accent-h) / 0.32);
+  --accent-ring: oklch(0.74 0.15 var(--accent-h) / 0.6);
+}
+
+/* Season identities. Only the hue, the fill lightness, and the ink on the fill
+   change; every derived token above recomputes from these three. */
+[data-season='winter'] {
+  --accent-h: 248;
+  --accent-strong-l: 0.54;
+  --accent-ink: oklch(0.99 0 0);
+}
+[data-season='spring'] {
+  --accent-h: 352;
+  --accent-strong-l: 0.55;
+  --accent-ink: oklch(0.99 0 0);
+}
+[data-season='summer'] {
+  --accent-h: 195;
+  --accent-strong-l: 0.74;
+  --accent-ink: oklch(0.21 0.03 220);
+}
+[data-season='fall'] {
+  --accent-h: 62;
+  --accent-strong-l: 0.78;
+  --accent-ink: oklch(0.22 0.04 65);
 }
 
 * {
@@ -29,19 +101,55 @@ body,
 body {
   margin: 0;
   font-family: var(--font-sans);
-  color: var(--color-zinc-100);
-  background-color: #08080c;
-  background-image:
-    radial-gradient(60rem 60rem at 15% -10%, oklch(0.4 0.12 315 / 0.18), transparent 60%),
-    radial-gradient(50rem 50rem at 100% 0%, oklch(0.45 0.11 250 / 0.16), transparent 55%);
-  background-attachment: fixed;
+  color: var(--ink);
+  background-color: var(--bg);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Thin, unobtrusive scrollbars that match the dark surfaces. */
+/* Even line breaks on headings; fewer orphans in prose. */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+/* One focus style for anything a component doesn't handle itself. */
+:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
+}
+
+/* Thin neutral scrollbars — a hint, not a reinvented control. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-zinc-700) transparent;
+  scrollbar-color: var(--surface-2) transparent;
+}
+
+/* Season-tinted ambient glow. Fixed to the viewport, sits behind content, and
+   shifts hue with whatever [data-season] wraps it. */
+.season-ambient::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      55rem 38rem at 12% -8%,
+      oklch(0.55 0.16 var(--accent-h) / 0.16),
+      transparent 60%
+    ),
+    radial-gradient(
+      44rem 36rem at 100% 0%,
+      oklch(0.55 0.13 calc(var(--accent-h) + 35) / 0.1),
+      transparent 55%
+    );
 }
 
 @keyframes fade-in {
@@ -56,7 +164,7 @@ body {
 @keyframes pop-in {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.98);
+    transform: translateY(10px) scale(0.985);
   }
   to {
     opacity: 1;
@@ -64,10 +172,42 @@ body {
   }
 }
 
+@keyframes sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .animate-fade-in {
-  animation: fade-in 0.15s ease-out;
+  animation: fade-in 0.18s var(--ease-out-quint);
 }
 
 .animate-pop-in {
-  animation: pop-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: pop-in 0.24s var(--ease-out-expo);
+}
+
+.animate-sheet-up {
+  animation: sheet-up 0.28s var(--ease-out-expo);
+}
+
+/* Reduced motion: collapse transforms to a plain crossfade, and neutralize any
+   stray transitions/animations. Instant is the honest fallback. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pop-in,
+  .animate-sheet-up {
+    animation: fade-in 0.15s ease-out;
+  }
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
