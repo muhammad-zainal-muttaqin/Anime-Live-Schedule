@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SeedRouteImport } from './routes/seed'
+import { Route as SearchRouteImport } from './routes/search'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SeasonYearRouteImport } from './routes/$season.$year'
 import { Route as SeasonYearIdRouteImport } from './routes/$season.$year.$id'
@@ -17,6 +18,11 @@ import { Route as SeasonYearIdRouteImport } from './routes/$season.$year.$id'
 const SeedRoute = SeedRouteImport.update({
   id: '/seed',
   path: '/seed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -37,12 +43,14 @@ const SeasonYearIdRoute = SeasonYearIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/search': typeof SearchRoute
   '/seed': typeof SeedRoute
   '/$season/$year': typeof SeasonYearRouteWithChildren
   '/$season/$year/$id': typeof SeasonYearIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/search': typeof SearchRoute
   '/seed': typeof SeedRoute
   '/$season/$year': typeof SeasonYearRouteWithChildren
   '/$season/$year/$id': typeof SeasonYearIdRoute
@@ -50,20 +58,28 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/search': typeof SearchRoute
   '/seed': typeof SeedRoute
   '/$season/$year': typeof SeasonYearRouteWithChildren
   '/$season/$year/$id': typeof SeasonYearIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/seed' | '/$season/$year' | '/$season/$year/$id'
+  fullPaths: '/' | '/search' | '/seed' | '/$season/$year' | '/$season/$year/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/seed' | '/$season/$year' | '/$season/$year/$id'
-  id: '__root__' | '/' | '/seed' | '/$season/$year' | '/$season/$year/$id'
+  to: '/' | '/search' | '/seed' | '/$season/$year' | '/$season/$year/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/search'
+    | '/seed'
+    | '/$season/$year'
+    | '/$season/$year/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SearchRoute: typeof SearchRoute
   SeedRoute: typeof SeedRoute
   SeasonYearRoute: typeof SeasonYearRouteWithChildren
 }
@@ -75,6 +91,13 @@ declare module '@tanstack/react-router' {
       path: '/seed'
       fullPath: '/seed'
       preLoaderRoute: typeof SeedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -115,6 +138,7 @@ const SeasonYearRouteWithChildren = SeasonYearRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SearchRoute: SearchRoute,
   SeedRoute: SeedRoute,
   SeasonYearRoute: SeasonYearRouteWithChildren,
 }

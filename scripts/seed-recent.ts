@@ -123,6 +123,37 @@ function seedWindow(): Array<{ season: Season; year: number }> {
   return list
 }
 
+/** Minimal pickTitle clone (can't import #/lib/format from scripts). */
+function pickTitle(title: { romaji?: string | null; english?: string | null; native?: string | null }): string {
+  return title.english || title.romaji || title.native || 'Untitled'
+}
+
+/** Build and write the cross-season search index. */
+async function writeSearchIndex(
+  results: Map<string, { season: string; year: number; media: unknown[] }>,
+): Promise<void> {
+  const index: Array<{ id: number; title: string; season: string; year: number; coverImage: string | null; format: string | null; averageScore: number | null }> = []
+  for (const [, result] of results) {
+    for (const raw of result.media) {
+      const m = raw as { id: number; title: { romaji?: string | null; english?: string | null; native?: string | null }; coverImage: { large?: string | null }; format?: string | null; averageScore?: number | null }
+      index.push({
+        id: m.id,
+        title: pickTitle(m.title),
+        season: result.season,
+        year: result.year,
+        coverImage: m.coverImage?.large ?? null,
+        format: m.format ?? null,
+        averageScore: m.averageScore ?? null,
+      })
+    }
+  }
+  console.log(`Membangun search index — ${index.length} entri`)
+  if (!DRY_RUN) {
+    await putKv('anilist:search:v1:index', index)
+  }
+  console.log(`Search index ditulis.`)
+}
+
 async function main() {
   if (!DRY_RUN && (!ACCOUNT_ID || !API_TOKEN)) {
     console.error('Missing CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN in env.')
@@ -135,6 +166,8 @@ async function main() {
       (DRY_RUN ? '  [DRY RUN, no writes]' : ''),
   )
 
+  const allResults = new Map<string, { season: string; year: number; media: unknown[] }>()
+
   let written = 0
   let failed = 0
   for (const { season, year } of jobs) {
@@ -146,6 +179,7 @@ async function main() {
         continue
       }
       if (!DRY_RUN) await putKv(key, result)
+      allResults.set(key, { season, year, media: result.media })
       written++
       console.log(`✓ ${season} ${year} — ${result.media.length} judul`)
     } catch (err) {
@@ -155,6 +189,10 @@ async function main() {
   }
 
   console.log(`\nSelesai. berhasil=${written} gagal=${failed}`)
+
+  if (written > 0) {
+    await writeSearchIndex(allResults)
+  }
 }
 
 main().catch((err) => {

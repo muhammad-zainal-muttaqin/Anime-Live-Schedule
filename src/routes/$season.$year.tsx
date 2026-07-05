@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link, Outlet, createFileRoute, redirect, stripSearchParams, useRouter } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { SearchX, Tv, X } from 'lucide-react'
+import { SearchX, Search, Tv, X } from 'lucide-react'
 import { AnimeCard } from '#/components/AnimeCard'
 import { AnimeListRow } from '#/components/AnimeListRow'
 import { FilterBar } from '#/components/filters/FilterBar'
@@ -91,6 +91,13 @@ function PageShell({
           <Link to="/" className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring rounded">
             <h1 className="text-lg font-bold tracking-tight text-ink">AnimeSeasons</h1>
             <p className="text-xs text-ink-subtle">Jadwal tayang anime per musim · data AniList</p>
+          </Link>
+          <Link
+            to="/search"
+            className="ml-auto flex h-10 w-10 items-center justify-center rounded-xl text-ink-muted transition hover:bg-surface hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
+            aria-label="Cari anime"
+          >
+            <Search className="h-5 w-5" />
           </Link>
         </header>
       </div>

@@ -110,3 +110,14 @@ export interface SeasonalResult {
   /** When this snapshot was fetched from AniList (unix ms). */
   fetchedAt: number
 }
+
+/** Minimal entry in the cross-season search index. */
+export interface SearchIndexEntry {
+  id: number
+  title: string
+  season: string
+  year: number
+  coverImage: string | null
+  format: string | null
+  averageScore: number | null
+}

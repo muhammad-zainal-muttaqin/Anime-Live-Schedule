@@ -120,14 +120,33 @@ async function putKv(key: string, value: unknown): Promise<void> {
   }
 }
 
-/** Best-effort delete of a key (used to clear the old v1 seed format). */
-async function deleteKv(key: string): Promise<void> {
-  const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/storage/kv/namespaces/${NAMESPACE_ID}/values/${encodeURIComponent(key)}`
-  try {
-    await fetch(url, { method: 'DELETE', headers: { Authorization: `Bearer ${API_TOKEN}` } })
-  } catch {
-    // ignore — cleanup is optional
+/** Minimal pickTitle clone (can't import #/lib/format from scripts). */
+function pickTitle(title: { romaji?: string | null; english?: string | null; native?: string | null }): string {
+  return title.english || title.romaji || title.native || 'Untitled'
+}
+
+/** Build and write the cross-season search index from results accumulated in memory. */
+async function writeSearchIndex(
+  results: Map<string, { season: string; year: number; media: unknown[] }>,
+): Promise<void> {
+  const index: Array<{ id: number; title: string; season: string; year: number; coverImage: string | null; format: string | null; averageScore: number | null }> = []
+  for (const [, result] of results) {
+    for (const raw of result.media) {
+      const m = raw as { id: number; title: { romaji?: string | null; english?: string | null; native?: string | null }; coverImage: { large?: string | null }; format?: string | null; averageScore?: number | null }
+      index.push({
+        id: m.id,
+        title: pickTitle(m.title),
+        season: result.season,
+        year: result.year,
+        coverImage: m.coverImage?.large ?? null,
+        format: m.format ?? null,
+        averageScore: m.averageScore ?? null,
+      })
+    }
   }
+  console.log(`\nBuilding search index — ${index.length} entries`)
+  if (!DRY_RUN) await putKv('anilist:search:v1:index', index)
+  console.log(`Search index written.`)
 }
 
 async function main() {
@@ -147,6 +166,9 @@ async function main() {
       (DRY_RUN ? '  [DRY RUN, no writes]' : ''),
   )
 
+  // Accumulate results in memory so we can build the search index at the end.
+  const allResults = new Map<string, { season: string; year: number; media: unknown[] }>()
+
   let written = 0
   let empty = 0
   let failed = 0
@@ -163,6 +185,7 @@ async function main() {
         await putKv(key, result)
         await deleteKv(`anilist:season:${season}:${year}`) // drop stale v1 key
       }
+      allResults.set(key, { season, year, media: result.media })
       written++
       console.log(`  ✓ ${season} ${year} — ${result.media.length} titles`)
     } catch (err) {
@@ -172,6 +195,10 @@ async function main() {
   }
 
   console.log(`\nDone. written=${written} empty=${empty} failed=${failed}`)
+
+  if (written > 0) {
+    await writeSearchIndex(allResults)
+  }
 }
 
 main().catch((err) => {
