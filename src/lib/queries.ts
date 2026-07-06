@@ -59,8 +59,14 @@ export const seasonalQueryOptions = (season: Season, year: number) =>
       }
       return fromKv
     },
-    // Revalidate on the client so an SSR-empty cold season fills in on mount.
-    staleTime: 0,
+    // Past seasons never change, so once we hold real data cache it hard and
+    // skip the per-navigation KV read. Current/upcoming stay at 0 (so live data
+    // keeps revalidating), and any empty result stays at 0 too so an SSR-empty
+    // cold season still fills in on the client.
+    staleTime: (query) =>
+      isCurrentOrUpcoming(season, year) || !query.state.data?.media.length
+        ? 0
+        : Infinity,
     gcTime: 1000 * 60 * 30,
   })
 

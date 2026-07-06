@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { AnimeDetailModal } from '#/components/AnimeDetailModal'
 import { useDialog } from '#/lib/hooks'
-import { animeDetailQueryOptions } from '#/lib/queries'
+import { animeDetailQueryOptions, seasonalQueryOptions } from '#/lib/queries'
 import { getSeasonalAnime } from '#/server/anilist'
 import { pickTitle } from '#/lib/format'
 import { isSeason, SEASON_LABELS } from '#/lib/anilist/season'
@@ -11,17 +11,25 @@ import type { AnimeMedia } from '#/lib/anilist/types'
 
 export const Route = createFileRoute('/$season/$year/$id')({
   loader: async ({
+    context,
     params,
   }): Promise<{ anime: AnimeMedia | null; seasonLabel: string }> => {
     const season = isSeason(params.season) ? params.season : 'summer'
     const year = Number(params.year)
     const id = Number(params.id)
+    const seasonLabel = `${SEASON_LABELS[season]} ${year}`
     try {
-      const seasonal = await getSeasonalAnime({ data: { season, year } })
+      // The parent route already loaded this season into the query cache, so
+      // reuse it for the modal's <head> instead of a second KV read. Only
+      // deep-links (no cache) fall through to the server fn.
+      const seasonal =
+        context.queryClient.getQueryData(
+          seasonalQueryOptions(season, year).queryKey,
+        ) ?? (await getSeasonalAnime({ data: { season, year } }))
       const anime = seasonal.media.find((m) => m.id === id) ?? null
-      return { anime, seasonLabel: `${SEASON_LABELS[season]} ${year}` }
+      return { anime, seasonLabel }
     } catch {
-      return { anime: null, seasonLabel: `${SEASON_LABELS[season]} ${year}` }
+      return { anime: null, seasonLabel }
     }
   },
   head: ({ params, loaderData }) => {

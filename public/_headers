@@ -1,0 +1,5 @@
+# Cloudflare static-asset headers. The search index is a large (~MB) file that
+# only changes on deploy — let browsers reuse it and revalidate in the
+# background instead of re-downloading it on every visit to /search.
+/search-index.json
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
