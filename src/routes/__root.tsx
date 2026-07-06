@@ -6,6 +6,7 @@ import {
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import type { QueryClient } from '@tanstack/react-query'
+import { ClockProvider } from '#/lib/clock'
 
 import appCss from '../styles.css?url'
 
@@ -43,7 +44,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        {children}
+        <ClockProvider>{children}</ClockProvider>
         {import.meta.env.DEV ? (
           <TanStackDevtools
             config={{ position: 'bottom-right' }}

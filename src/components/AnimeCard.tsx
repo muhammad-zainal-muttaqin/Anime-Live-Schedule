@@ -1,13 +1,9 @@
+import { memo } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Star } from 'lucide-react'
 import type { AnimeMedia } from '#/lib/anilist/types'
-import {
-  formatFormat,
-  formatScore,
-  formatTimeUntil,
-  pickTitle,
-} from '#/lib/format'
-import { useNow } from '#/lib/hooks'
+import { formatFormat, formatScore, pickTitle } from '#/lib/format'
+import { Countdown } from '#/components/Countdown'
 
 interface AnimeCardProps {
   anime: AnimeMedia
@@ -15,13 +11,18 @@ interface AnimeCardProps {
   year: string
 }
 
-export function AnimeCard({ anime, season, year }: AnimeCardProps) {
+export const AnimeCard = memo(function AnimeCard({
+  anime,
+  season,
+  year,
+}: AnimeCardProps) {
   const title = pickTitle(anime.title)
   const score = formatScore(anime.averageScore)
-  const cover = anime.coverImage.extraLarge ?? anime.coverImage.large ?? undefined
+  // Grid cells are small — `large` is plenty and ~4× lighter than `extraLarge`
+  // across 100+ posters. The modal keeps `extraLarge` for its full-size poster.
+  const cover = anime.coverImage.large ?? anime.coverImage.extraLarge ?? undefined
   const studio = anime.studios.nodes[0]?.name
   const airing = anime.nextAiringEpisode
-  const now = useNow()
   // "TV" is the default expectation — only surface the format when it's notable.
   const format = anime.format && anime.format !== 'TV' ? formatFormat(anime.format) : null
 
@@ -42,6 +43,7 @@ export function AnimeCard({ anime, season, year }: AnimeCardProps) {
             src={cover}
             alt=""
             loading="lazy"
+            decoding="async"
             className="absolute inset-0 h-full w-full object-cover transition duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.06]"
           />
         ) : null}
@@ -50,14 +52,14 @@ export function AnimeCard({ anime, season, year }: AnimeCardProps) {
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-black/35" />
 
         {score ? (
-          <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/65 px-2 py-0.5 text-xs font-semibold text-amber-300 tabular-nums backdrop-blur-sm">
+          <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-xs font-semibold text-amber-300 tabular-nums">
             <Star className="h-3 w-3 fill-amber-300" />
             {score}
           </div>
         ) : null}
 
         {format ? (
-          <div className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-100 backdrop-blur-sm">
+          <div className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-100">
             {format}
           </div>
         ) : null}
@@ -71,7 +73,9 @@ export function AnimeCard({ anime, season, year }: AnimeCardProps) {
               />
               EP {airing.episode}
             </span>
-            <span className="tabular-nums">{formatTimeUntil(airing.airingAt, now)}</span>
+            <span className="tabular-nums">
+              <Countdown airingAt={airing.airingAt} />
+            </span>
           </div>
         ) : null}
       </div>
@@ -84,4 +88,4 @@ export function AnimeCard({ anime, season, year }: AnimeCardProps) {
       ) : null}
     </Link>
   )
-}
+})

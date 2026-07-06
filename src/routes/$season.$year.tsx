@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import {
   Link,
   Outlet,
@@ -176,12 +176,15 @@ function SeasonPage() {
     [data.media, filters],
   )
 
-  const onPatch = (patch: Partial<SeasonSearch>) =>
-    navigate({
-      search: (prev) => ({ ...prev, ...patch }),
-      replace: true,
-      resetScroll: false,
-    })
+  const onPatch = useCallback(
+    (patch: Partial<SeasonSearch>) =>
+      navigate({
+        search: (prev) => ({ ...prev, ...patch }),
+        replace: true,
+        resetScroll: false,
+      }),
+    [navigate],
+  )
 
   const filtering = hasActiveFilters(filters)
 

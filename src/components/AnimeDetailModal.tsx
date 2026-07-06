@@ -6,13 +6,13 @@ import {
   formatFuzzyDate,
   formatScore,
   formatStatus,
-  formatTimeUntil,
   pickTitle,
   secondaryTitle,
   STATUS_TONE,
   stripHtml,
 } from '#/lib/format'
-import { useDialog, useNow } from '#/lib/hooks'
+import { useDialog } from '#/lib/hooks'
+import { Countdown } from '#/components/Countdown'
 
 interface AnimeDetailModalProps {
   detail: AnimeDetail
@@ -22,7 +22,6 @@ interface AnimeDetailModalProps {
 export function AnimeDetailModal({ detail, onClose }: AnimeDetailModalProps) {
   const closeRef = useRef<HTMLButtonElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const now = useNow()
   const jsonLd = useMemo(
     () =>
       JSON.stringify({
@@ -169,7 +168,7 @@ export function AnimeDetailModal({ detail, onClose }: AnimeDetailModalProps) {
               <CalendarClock className="h-4 w-4 shrink-0" />
               <span>Episode {airing.episode} tayang dalam</span>
               <span className="font-semibold tabular-nums text-ink">
-                {formatTimeUntil(airing.airingAt, now)}
+                <Countdown airingAt={airing.airingAt} />
               </span>
             </div>
           ) : null}

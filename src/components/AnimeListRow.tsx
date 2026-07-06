@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Star } from 'lucide-react'
 import type { AnimeMedia } from '#/lib/anilist/types'
@@ -8,11 +9,10 @@ import {
   formatScore,
   formatSource,
   formatStatus,
-  formatTimeUntil,
   pickTitle,
   STATUS_TONE,
 } from '#/lib/format'
-import { useNow } from '#/lib/hooks'
+import { Countdown } from '#/components/Countdown'
 
 interface AnimeListRowProps {
   anime: AnimeMedia
@@ -23,12 +23,15 @@ interface AnimeListRowProps {
 const MAX_GENRE_CHIPS = 4
 
 /** LiveChart-style detailed row for the list view. The whole row is a link. */
-export function AnimeListRow({ anime, season, year }: AnimeListRowProps) {
+export const AnimeListRow = memo(function AnimeListRow({
+  anime,
+  season,
+  year,
+}: AnimeListRowProps) {
   const title = pickTitle(anime.title)
   const score = formatScore(anime.averageScore)
   const cover = anime.coverImage.large ?? anime.coverImage.extraLarge ?? undefined
   const airing = anime.nextAiringEpisode
-  const now = useNow()
 
   const meta = [
     anime.studios.nodes[0]?.name,
@@ -53,7 +56,7 @@ export function AnimeListRow({ anime, season, year }: AnimeListRowProps) {
         style={anime.coverImage.color ? { backgroundColor: anime.coverImage.color } : undefined}
       >
         {cover ? (
-          <img src={cover} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+          <img src={cover} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
         ) : null}
       </div>
 
@@ -92,7 +95,7 @@ export function AnimeListRow({ anime, season, year }: AnimeListRowProps) {
         ) : null}
         {airing ? (
           <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent ring-1 ring-accent-line tabular-nums">
-            EP {airing.episode} · {formatTimeUntil(airing.airingAt, now)}
+            EP {airing.episode} · <Countdown airingAt={airing.airingAt} />
           </span>
         ) : anime.status ? (
           <span className="flex items-center gap-1.5 text-xs text-ink-subtle">
@@ -106,4 +109,4 @@ export function AnimeListRow({ anime, season, year }: AnimeListRowProps) {
       </div>
     </Link>
   )
-}
+})

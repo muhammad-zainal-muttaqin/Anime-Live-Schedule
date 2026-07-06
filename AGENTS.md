@@ -50,9 +50,11 @@ Untuk route dengan titik literal (`.xml`, `.txt`), gunakan bracket escape:
 Jalankan `pnpm generate-routes` setelah buat/rename file route.
 
 ## Live countdown
-Gunakan `useNow()` dari `#/lib/hooks` (default interval 1 detik) komponen
-yang perlu timer. Call `formatTimeUntil(airingAt, now)` — selalu kirim
-`now` dari hook, bukan `Date.now()` default.
+Ada satu shared clock global: `ClockProvider` (di `__root.tsx`) + `useClock()`
+dari `#/lib/clock`. Untuk teks hitung mundur pakai `<Countdown airingAt={...} />`
+(`#/components/Countdown`) — hanya node itu yang re-render tiap detik, bukan
+seluruh kartu. Jangan bikin `setInterval`/`Date.now()` per komponen (grid 100+
+kartu = 100+ timer).
 
 ## Data flow seasonal page
 1. SSR: `loader` → `ensureQueryData` → server fn `getSeasonalAnime`
