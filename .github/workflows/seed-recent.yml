@@ -2,7 +2,9 @@ name: Seed recent seasons
 
 on:
   schedule:
-    # Every 6 hours — AniList airing schedules don't change faster than that.
+    # Every 3 hours. Cheap now that seeding is write-if-changed — most runs are
+    # KV reads (roomy 100k/day bucket) and only the current season, if it moved,
+    # actually spends a write (scarce 1000/day bucket).
     - cron: '0 */3 * * *'
   workflow_dispatch:
     # Allow manual trigger from the Actions tab.

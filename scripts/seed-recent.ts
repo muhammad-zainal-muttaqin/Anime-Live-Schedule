@@ -109,6 +109,31 @@ async function fetchSeason(season: Season, year: number) {
   return { pageInfo, media, fetchedAt: Date.now() }
 }
 
+/**
+ * Stable fingerprint of a season's media for write-if-changed. Drops
+ * `nextAiringEpisode.timeUntilAiring` — a relative countdown AniList recomputes
+ * on every request — so an unchanged schedule doesn't trigger a needless KV
+ * write. (`fetchedAt` lives at the snapshot's top level, not in `media`, so it's
+ * already excluded from this comparison.)
+ */
+function seasonSignature(media: unknown[]): string {
+  return JSON.stringify(
+    media.map((raw) => {
+      const m = raw as {
+        nextAiringEpisode?: { airingAt?: number; episode?: number } | null
+      }
+      if (!m.nextAiringEpisode) return raw
+      return {
+        ...m,
+        nextAiringEpisode: {
+          airingAt: m.nextAiringEpisode.airingAt,
+          episode: m.nextAiringEpisode.episode,
+        },
+      }
+    }),
+  )
+}
+
 async function putKv(key: string, value: unknown): Promise<void> {
   const encoded = encodeURIComponent(key)
   const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/storage/kv/namespaces/${NAMESPACE_ID}/values/${encoded}?expiration_ttl=${KV_TTL_SECONDS}`
@@ -236,12 +261,19 @@ async function writeSearchIndex(
   const kept = existing.filter(
     (e) => !updatedSeasons.has(`${e.season}:${e.year}`),
   )
-  const merged = [...kept, ...fresh]
+  // Sort by id so the serialized index is deterministic. Otherwise refreshed
+  // seasons move to the end each run, so both the write-if-changed compare below
+  // and the committed search-index.json diff would churn on every single run.
+  const merged = [...kept, ...fresh].sort((a, b) => a.id - b.id)
   console.log(
     `Search index: ${existing.length} → ${merged.length} entri ` +
       `(${fresh.length} di ${updatedSeasons.size} musim di-refresh, ${existing.length - kept.length} lama dibuang)`,
   )
 
+  if (JSON.stringify(merged) === JSON.stringify(existing)) {
+    console.log('Search index tak berubah, skip tulis.')
+    return
+  }
   if (!DRY_RUN) {
     await putKvPersist('anilist:search:v1:index', merged)
   }
@@ -269,7 +301,8 @@ async function main() {
     { season: string; year: number; media: unknown[] }
   >()
 
-  let written = 0
+  let wrote = 0
+  let unchanged = 0
   let failed = 0
   for (const { season, year } of jobs) {
     const key = `anilist:season:v2:${season}:${year}`
@@ -279,10 +312,25 @@ async function main() {
         console.log(`${season} ${year} — 0 judul (lewati)`)
         continue
       }
-      if (!DRY_RUN) await putKv(key, result)
+      // Write-if-changed: skip the PUT when the snapshot is identical to what's
+      // already in KV (ignoring volatile fields — see seasonSignature). A GET
+      // comes from the roomy 100k/day read bucket; the PUT it saves comes from
+      // the scarce 1000/day write bucket. Upcoming/past seasons rarely change.
+      const existing = (await getKv(key)) as { media?: unknown[] } | null
+      const changed =
+        !existing?.media ||
+        seasonSignature(existing.media) !== seasonSignature(result.media)
+      if (changed) {
+        if (!DRY_RUN) await putKv(key, result)
+        wrote++
+        console.log(`✓ ${season} ${year} — ${result.media.length} judul`)
+      } else {
+        unchanged++
+        console.log(
+          `= ${season} ${year} — ${result.media.length} judul (tak berubah, skip)`,
+        )
+      }
       allResults.set(key, { season, year, media: result.media })
-      written++
-      console.log(`✓ ${season} ${year} — ${result.media.length} judul`)
     } catch (err) {
       failed++
       console.error(
@@ -291,9 +339,11 @@ async function main() {
     }
   }
 
-  console.log(`\nSelesai. berhasil=${written} gagal=${failed}`)
+  console.log(
+    `\nSelesai. tulis=${wrote} tak-berubah=${unchanged} gagal=${failed}`,
+  )
 
-  if (written > 0) {
+  if (allResults.size > 0) {
     await writeSearchIndex(allResults)
   }
 

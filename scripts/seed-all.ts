@@ -28,6 +28,7 @@ import {
 } from '../src/lib/text.ts'
 
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
+const SEARCH_INDEX_KEY = 'anilist:search:v1:index'
 const PER_PAGE = 50
 const ANILIST_PACING_MS = 700 // 85 req/mnt — stay under 90
 const ANILIST_USER_AGENT =
@@ -128,17 +129,42 @@ async function putKv(key: string, value: unknown): Promise<void> {
   }
 }
 
-/** Best-effort delete of a key (used to clear the old v1 seed format). */
-async function deleteKv(key: string): Promise<void> {
-  const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/storage/kv/namespaces/${NAMESPACE_ID}/values/${encodeURIComponent(key)}`
+/** Read a KV value. Returns null if missing/error. */
+async function getKv(key: string): Promise<unknown> {
+  const encoded = encodeURIComponent(key)
+  const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/storage/kv/namespaces/${NAMESPACE_ID}/values/${encoded}`
   try {
-    await fetch(url, {
-      method: 'DELETE',
+    const res = await fetch(url, {
       headers: { Authorization: `Bearer ${API_TOKEN}` },
     })
+    if (!res.ok) return null
+    return res.json()
   } catch {
-    // ignore — cleanup is optional
+    return null
   }
+}
+
+/**
+ * Stable fingerprint of a season's media for write-if-changed. Drops
+ * `nextAiringEpisode.timeUntilAiring` (a per-request relative countdown) so an
+ * unchanged season doesn't burn a KV write. See scripts/seed-recent.ts.
+ */
+function seasonSignature(media: unknown[]): string {
+  return JSON.stringify(
+    media.map((raw) => {
+      const m = raw as {
+        nextAiringEpisode?: { airingAt?: number; episode?: number } | null
+      }
+      if (!m.nextAiringEpisode) return raw
+      return {
+        ...m,
+        nextAiringEpisode: {
+          airingAt: m.nextAiringEpisode.airingAt,
+          episode: m.nextAiringEpisode.episode,
+        },
+      }
+    }),
+  )
 }
 
 interface IndexEntry {
@@ -193,8 +219,16 @@ async function writeSearchIndex(
       index.push(toIndexEntry(raw as IndexMedia, result.season, result.year))
     }
   }
+  // Deterministic order so the write-if-changed compare (and the committed
+  // search-index.json diff) is stable across runs.
+  index.sort((a, b) => a.id - b.id)
   console.log(`\nBuilding search index — ${index.length} entries`)
-  if (!DRY_RUN) await putKv('anilist:search:v1:index', index)
+
+  if (JSON.stringify(index) === JSON.stringify(await getKv(SEARCH_INDEX_KEY))) {
+    console.log('Search index unchanged, skipping write.')
+    return
+  }
+  if (!DRY_RUN) await putKv(SEARCH_INDEX_KEY, index)
   console.log(`Search index written.`)
 }
 
@@ -223,7 +257,8 @@ async function main() {
     { season: string; year: number; media: unknown[] }
   >()
 
-  let written = 0
+  let wrote = 0
+  let unchanged = 0
   let empty = 0
   let failed = 0
   for (const { season, year } of jobs) {
@@ -235,13 +270,23 @@ async function main() {
         empty++
         continue // nothing to cache; browser fallback would also get empty
       }
-      if (!DRY_RUN) {
-        await putKv(key, result)
-        await deleteKv(`anilist:season:${season}:${year}`) // drop stale v1 key
+      // Write-if-changed — skip the PUT for seasons already identical in KV
+      // (most past seasons never change). A GET is far cheaper than a PUT here.
+      const existing = (await getKv(key)) as { media?: unknown[] } | null
+      const changed =
+        !existing?.media ||
+        seasonSignature(existing.media) !== seasonSignature(result.media)
+      if (changed) {
+        if (!DRY_RUN) await putKv(key, result)
+        wrote++
+        console.log(`  ✓ ${season} ${year} — ${result.media.length} titles`)
+      } else {
+        unchanged++
+        console.log(
+          `  = ${season} ${year} — ${result.media.length} titles (unchanged)`,
+        )
       }
       allResults.set(key, { season, year, media: result.media })
-      written++
-      console.log(`  ✓ ${season} ${year} — ${result.media.length} titles`)
     } catch (err) {
       failed++
       console.error(
@@ -250,15 +295,17 @@ async function main() {
     }
   }
 
-  console.log(`\nDone. written=${written} empty=${empty} failed=${failed}`)
+  console.log(
+    `\nDone. wrote=${wrote} unchanged=${unchanged} empty=${empty} failed=${failed}`,
+  )
 
-  if (written > 0) {
+  if (allResults.size > 0) {
     await writeSearchIndex(allResults)
   }
 
-  // Wrote nothing at all — almost always AniList 403ing this IP. Exit non-zero
+  // Fetched nothing at all — almost always AniList 403ing this IP. Exit non-zero
   // so the failure is visible instead of a silent green run.
-  if (!DRY_RUN && written === 0) {
+  if (!DRY_RUN && allResults.size === 0) {
     console.error(
       '\nFATAL: 0 musim berhasil di-seed — lihat error di atas (biasanya AniList 403, ' +
         'atau limit tulis KV harian Cloudflare). KV tidak diperbarui.',
