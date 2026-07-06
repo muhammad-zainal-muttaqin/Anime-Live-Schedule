@@ -7,14 +7,17 @@
  * 90 requests/minute limit.
  */
 
-/** Fields shared by the grid card and the detail view. */
-const MEDIA_CARD_FIELDS = `
+/**
+ * Lean field set for the seasonal grid snapshot (cached in KV + dehydrated into
+ * SSR HTML for ~100 titles). Deliberately omits fields nothing in the grid /
+ * list / OG head reads: idMal, bannerImage, season, seasonYear. `synonyms` stays
+ * — the search index is built from these results and needs it for alt titles.
+ */
+const SEASONAL_FIELDS = `
   id
-  idMal
   title { romaji english native }
   synonyms
   coverImage { extraLarge large color }
-  bannerImage
   genres
   averageScore
   popularity
@@ -22,14 +25,21 @@ const MEDIA_CARD_FIELDS = `
   duration
   status
   format
-  season
-  seasonYear
   startDate { year month day }
   studios(isMain: true) { nodes { id name } }
   nextAiringEpisode { airingAt timeUntilAiring episode }
   isAdult
   source(version: 3)
   description(asHtml: false)
+`
+
+/** Full field set for the detail modal — includes what SEASONAL_FIELDS trims. */
+const MEDIA_CARD_FIELDS = `
+  ${SEASONAL_FIELDS}
+  idMal
+  bannerImage
+  season
+  seasonYear
 `
 
 export const SEASONAL_QUERY = `
@@ -42,7 +52,7 @@ export const SEASONAL_QUERY = `
         type: ANIME
         sort: POPULARITY_DESC
       ) {
-        ${MEDIA_CARD_FIELDS}
+        ${SEASONAL_FIELDS}
       }
     }
   }

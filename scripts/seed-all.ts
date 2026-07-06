@@ -167,6 +167,17 @@ function seasonSignature(media: unknown[]): string {
   )
 }
 
+// Search-index cover URLs all share this prefix; store just the filename and
+// rebuild the URL in the client (src/routes/search.tsx) to shrink the index.
+const COVER_URL_PREFIX =
+  'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/'
+function coverFilename(url: string | null | undefined): string | null {
+  if (!url) return null
+  return url.startsWith(COVER_URL_PREFIX)
+    ? url.slice(COVER_URL_PREFIX.length)
+    : url
+}
+
 interface IndexEntry {
   id: number
   title: string
@@ -174,7 +185,7 @@ interface IndexEntry {
   year: number
   coverImage: string | null
   format: string | null
-  averageScore: number | null
+  averageScore?: number
   popularity: number | null
   alt: string[]
 }
@@ -201,9 +212,9 @@ function toIndexEntry(m: IndexMedia, season: string, year: number): IndexEntry {
     title,
     season,
     year,
-    coverImage: m.coverImage?.large ?? null,
+    coverImage: coverFilename(m.coverImage?.large),
     format: m.format ?? null,
-    averageScore: m.averageScore ?? null,
+    ...(m.averageScore != null ? { averageScore: m.averageScore } : {}),
     popularity: m.popularity ?? null,
     alt: altTitles(m.title, m.synonyms, title),
   }

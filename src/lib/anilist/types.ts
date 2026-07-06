@@ -32,13 +32,12 @@ export interface Studio {
 /** The fields we pull for each card in the grid. */
 export interface AnimeMedia {
   id: number
-  idMal: number | null
   title: AniListTitle
-  /** Alternate titles from AniList (romanizations, abbreviations). Optional:
-   *  snapshots cached before this field existed lack it. */
+  /** Alternate titles from AniList (romanizations, abbreviations). Kept in the
+   *  snapshot because the search index is built from it. Optional: snapshots
+   *  cached before this field existed lack it. */
   synonyms?: string[]
   coverImage: AniListCoverImage
-  bannerImage: string | null
   genres: string[]
   averageScore: number | null
   popularity: number | null
@@ -46,8 +45,6 @@ export interface AnimeMedia {
   duration: number | null
   status: string | null
   format: string | null
-  season: string | null
-  seasonYear: number | null
   startDate: AniListFuzzyDate
   studios: { nodes: Studio[] }
   nextAiringEpisode: NextAiringEpisode | null
@@ -87,8 +84,10 @@ export interface AniListRelationEdge {
   node: AniListRelationNode
 }
 
-/** The richer payload used by the detail modal. */
+/** The richer payload used by the detail modal — includes the fields the lean
+ *  seasonal snapshot omits (only `bannerImage` is actually rendered). */
 export interface AnimeDetail extends AnimeMedia {
+  bannerImage: string | null
   description: string | null
   trailer: AniListTrailer | null
   siteUrl: string | null
@@ -120,9 +119,12 @@ export interface SearchIndexEntry {
   title: string
   season: string
   year: number
+  /** Cover filename only (e.g. `bx123-abc.jpg`); the full CDN URL is rebuilt in
+   *  the client. May be a full URL for non-standard covers, or null. */
   coverImage: string | null
   format: string | null
-  averageScore: number | null
+  /** Omitted entirely when AniList has no score (saves index bytes). */
+  averageScore?: number | null
   /** Ranking signal — higher sorts first. Optional on pre-enrichment indexes. */
   popularity?: number | null
   /** Other searchable titles (romaji/native/english/synonyms), minus `title`. */

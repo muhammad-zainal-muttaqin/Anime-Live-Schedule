@@ -19,10 +19,8 @@ let nextId = 1
 function makeMedia(overrides: Partial<AnimeMedia> = {}): AnimeMedia {
   return {
     id: nextId++,
-    idMal: null,
     title: { romaji: 'Romaji Title', english: null, native: null },
     coverImage: { extraLarge: null, large: null, color: null },
-    bannerImage: null,
     genres: [],
     averageScore: null,
     popularity: null,
@@ -30,8 +28,6 @@ function makeMedia(overrides: Partial<AnimeMedia> = {}): AnimeMedia {
     duration: null,
     status: null,
     format: 'TV',
-    season: 'SUMMER',
-    seasonYear: 2026,
     startDate: { year: null, month: null, day: null },
     studios: { nodes: [] },
     nextAiringEpisode: null,

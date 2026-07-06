@@ -33,8 +33,13 @@ export function stripHtml(html: string | null): string {
     .trim()
 }
 
-/** Word-boundary truncation for synopsis previews stored in the season cache. */
-export function truncatePlain(text: string, max = 300): string {
+/**
+ * Word-boundary truncation for synopsis previews stored in the season cache.
+ * Only the list row shows this (grid doesn't), clamped to 2 lines (~140 chars),
+ * so 180 is plenty — keeps the KV snapshot and SSR HTML lean. The detail modal
+ * fetches the full, untruncated description separately.
+ */
+export function truncatePlain(text: string, max = 180): string {
   if (text.length <= max) return text
   const slice = text.slice(0, max)
   const lastSpace = slice.lastIndexOf(' ')

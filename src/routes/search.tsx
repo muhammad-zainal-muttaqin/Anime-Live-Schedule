@@ -14,6 +14,15 @@ const GRID = 'grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:
 const MAX_RESULTS = 60
 const POPULAR_COUNT = 24
 
+// The index stores cover filenames only; rebuild the CDN URL here. Older index
+// entries may still hold a full URL — pass those through unchanged.
+const COVER_URL_PREFIX =
+  'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/'
+function coverUrl(cover: string | null): string | null {
+  if (!cover) return null
+  return cover.startsWith('http') ? cover : COVER_URL_PREFIX + cover
+}
+
 let indexPromise: Promise<SearchIndexEntry[]> | null = null
 
 function loadIndex(): Promise<SearchIndexEntry[]> {
@@ -280,6 +289,7 @@ function PosterSkeletonGrid() {
 
 function SearchCard({ anime }: { anime: SearchIndexEntry }) {
   const seasonLabel = SEASON_LABELS[anime.season] ?? anime.season
+  const cover = coverUrl(anime.coverImage)
   return (
     <Link
       to="/$season/$year/$id"
@@ -287,11 +297,12 @@ function SearchCard({ anime }: { anime: SearchIndexEntry }) {
       className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring rounded-2xl"
     >
       <div className="aspect-[2/3] overflow-hidden rounded-2xl bg-surface-2 ring-1 ring-border transition group-hover:ring-accent-ring group-focus-visible:ring-accent-ring">
-        {anime.coverImage ? (
+        {cover ? (
           <img
-            src={anime.coverImage}
+            src={cover}
             alt=""
             loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover transition group-hover:scale-105"
           />
         ) : (
