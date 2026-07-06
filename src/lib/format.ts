@@ -8,7 +8,8 @@ export { pickTitle, stripHtml }
 /** The other titles, for showing under the main one in the modal. */
 export function secondaryTitle(title: AniListTitle): string | null {
   const main = pickTitle(title)
-  const alt = title.romaji && title.romaji !== main ? title.romaji : title.native
+  const alt =
+    title.romaji && title.romaji !== main ? title.romaji : title.native
   return alt && alt !== main ? alt : null
 }
 
@@ -45,7 +46,7 @@ const FORMAT_LABELS: Record<string, string> = {
 }
 
 export function formatFormat(format: string | null): string {
-  if (!format) return '—'
+  if (!format) return '-'
   return FORMAT_LABELS[format] ?? format
 }
 
@@ -74,21 +75,27 @@ export function formatSource(source: string | null | undefined): string | null {
 }
 
 /** "12 eps × 24m", or whichever half is known; null when neither is. */
-export function formatEpsDuration(episodes: number | null, duration: number | null): string | null {
+export function formatEpsDuration(
+  episodes: number | null,
+  duration: number | null,
+): string | null {
   const eps = episodes ? `${episodes} eps` : null
   const mins = duration ? `${duration}m` : null
   if (eps && mins) return `${eps} × ${mins}`
   return eps ?? mins
 }
 
-/** AniList averageScore is 0–100. Render as a 0–10 rating string, or null. */
+/** AniList averageScore is 0-100. Render as a 0-10 rating string, or null. */
 export function formatScore(averageScore: number | null): string | null {
   if (averageScore == null) return null
   return (averageScore / 10).toFixed(1)
 }
 
 /** Countdown to an airing time, e.g. "2d 3h 30m 15s", or "aired". */
-export function formatTimeUntil(airingAtSeconds: number, now: number = Date.now()): string {
+export function formatTimeUntil(
+  airingAtSeconds: number,
+  now: number = Date.now(),
+): string {
   const diffMs = airingAtSeconds * 1000 - now
   if (diffMs <= 0) return 'aired'
 
@@ -105,14 +112,25 @@ export function formatTimeUntil(airingAtSeconds: number, now: number = Date.now(
 }
 
 const MONTHS = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ]
 
 export function formatFuzzyDate(date: AniListFuzzyDate): string | null {
   if (!date.year) return null
   if (!date.month) return String(date.year)
   const month = MONTHS[date.month - 1] ?? ''
-  return date.day ? `${month} ${date.day}, ${date.year}` : `${month} ${date.year}`
+  return date.day
+    ? `${month} ${date.day}, ${date.year}`
+    : `${month} ${date.year}`
 }
-

@@ -3,11 +3,11 @@
  *
  * This module intentionally has NO `#/…` subpath imports, so the seed scripts
  * (`node --experimental-strip-types scripts/*.ts`) can import it via a plain
- * relative path — no module resolver needed. Previously stripHtml / truncatePlain
+ * relative path (no module resolver needed). Previously stripHtml / truncatePlain
  * / pickTitle were copy-pasted into each script; keep them here only.
  */
 
-/** Structural title shape — avoids importing AniList types (keeps this file `#/`-free). */
+/** Structural title shape; avoids importing AniList types (keeps this file `#/`-free). */
 export interface TitleLike {
   romaji?: string | null
   english?: string | null
@@ -36,7 +36,7 @@ export function stripHtml(html: string | null): string {
 /**
  * Word-boundary truncation for synopsis previews stored in the season cache.
  * Only the list row shows this (grid doesn't), clamped to 2 lines (~140 chars),
- * so 180 is plenty — keeps the KV snapshot and SSR HTML lean. The detail modal
+ * so 180 is plenty; it keeps the KV snapshot and SSR HTML lean. The detail modal
  * fetches the full, untruncated description separately.
  */
 export function truncatePlain(text: string, max = 180): string {
@@ -48,10 +48,7 @@ export function truncatePlain(text: string, max = 180): string {
 
 /** Lowercase + strip diacritics so "Ō" matches "o". */
 export function normalizeText(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
+  return value.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '')
 }
 
 /**

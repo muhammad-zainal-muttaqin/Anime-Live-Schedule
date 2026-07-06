@@ -1,8 +1,8 @@
-name: Seed all seasons (1960–now)
+name: Seed all seasons (1960-now)
 
 on:
   workflow_dispatch:
-    # Manual trigger dari Actions tab — seed 272 musim sekaligus.
+    # Manual trigger dari Actions tab: seed 272 musim sekaligus.
     # Jalanin sekali pas awal, atau pas perlu reset data.
 
 jobs:
@@ -46,7 +46,7 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # The committed search-index.json is a static build asset — it only reaches
+      # The committed search-index.json is a static build asset; it only reaches
       # the live worker on a deploy. Redeploy when it changed so the search page
       # stays in sync (KV grid/countdown is read at runtime, needs no deploy).
       - name: Setup pnpm

@@ -20,7 +20,7 @@ export interface AniListCoverImage {
 
 export interface NextAiringEpisode {
   airingAt: number // unix seconds
-  timeUntilAiring: number // seconds (as of fetch time — recompute on client)
+  timeUntilAiring: number // seconds (as of fetch time; recompute on client)
   episode: number
 }
 
@@ -84,7 +84,7 @@ export interface AniListRelationEdge {
   node: AniListRelationNode
 }
 
-/** The richer payload used by the detail modal — includes the fields the lean
+/** The richer payload used by the detail modal; includes the fields the lean
  *  seasonal snapshot omits (only `bannerImage` is actually rendered). */
 export interface AnimeDetail extends AnimeMedia {
   bannerImage: string | null
@@ -125,7 +125,7 @@ export interface SearchIndexEntry {
   format: string | null
   /** Omitted entirely when AniList has no score (saves index bytes). */
   averageScore?: number | null
-  /** Ranking signal — higher sorts first. Optional on pre-enrichment indexes. */
+  /** Ranking signal; higher sorts first. Optional on pre-enrichment indexes. */
   popularity?: number | null
   /** Other searchable titles (romaji/native/english/synonyms), minus `title`. */
   alt?: string[]

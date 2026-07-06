@@ -22,6 +22,11 @@ export function getRouter() {
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
     defaultStructuralSharing: true,
+    // Un-preloaded navigations (year dropdown, deep links) show the skeleton
+    // after 200ms instead of the 1s default, so the UI never feels frozen.
+    // MinMs keeps a shown skeleton up briefly to avoid a one-frame flash.
+    defaultPendingMs: 200,
+    defaultPendingMinMs: 300,
   })
 
   setupRouterSsrQueryIntegration({ router, queryClient })

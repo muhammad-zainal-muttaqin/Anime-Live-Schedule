@@ -18,13 +18,15 @@ export const AnimeCard = memo(function AnimeCard({
 }: AnimeCardProps) {
   const title = pickTitle(anime.title)
   const score = formatScore(anime.averageScore)
-  // Grid cells are small — `large` is plenty and ~4× lighter than `extraLarge`
+  // Grid cells are small; `large` is plenty and ~4× lighter than `extraLarge`
   // across 100+ posters. The modal keeps `extraLarge` for its full-size poster.
-  const cover = anime.coverImage.large ?? anime.coverImage.extraLarge ?? undefined
+  const cover =
+    anime.coverImage.large ?? anime.coverImage.extraLarge ?? undefined
   const studio = anime.studios.nodes[0]?.name
   const airing = anime.nextAiringEpisode
-  // "TV" is the default expectation — only surface the format when it's notable.
-  const format = anime.format && anime.format !== 'TV' ? formatFormat(anime.format) : null
+  // "TV" is the default expectation; only surface the format when it's notable.
+  const format =
+    anime.format && anime.format !== 'TV' ? formatFormat(anime.format) : null
 
   return (
     <Link
@@ -36,7 +38,11 @@ export const AnimeCard = memo(function AnimeCard({
     >
       <div
         className="relative aspect-[2/3] overflow-hidden rounded-2xl bg-surface-2 ring-1 ring-border shadow-sm transition duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-y-1 group-hover:shadow-xl group-hover:shadow-black/40 group-hover:ring-accent-line group-focus-visible:ring-2 group-focus-visible:ring-accent-ring"
-        style={anime.coverImage.color ? { backgroundColor: anime.coverImage.color } : undefined}
+        style={
+          anime.coverImage.color
+            ? { backgroundColor: anime.coverImage.color }
+            : undefined
+        }
       >
         {cover ? (
           <img

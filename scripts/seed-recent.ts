@@ -39,7 +39,7 @@ const DRY_RUN = process.argv.includes('--dry-run')
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-/** Global rate limiter — ensures requests are ≥ ANILIST_PACING_MS apart. */
+/** Global rate limiter; ensures requests are ≥ ANILIST_PACING_MS apart. */
 let lastRequestTime = 0
 async function rateLimit() {
   const now = Date.now()
@@ -111,8 +111,8 @@ async function fetchSeason(season: Season, year: number) {
 
 /**
  * Stable fingerprint of a season's media for write-if-changed. Drops
- * `nextAiringEpisode.timeUntilAiring` — a relative countdown AniList recomputes
- * on every request — so an unchanged schedule doesn't trigger a needless KV
+ * `nextAiringEpisode.timeUntilAiring` (a relative countdown AniList recomputes
+ * on every request) so an unchanged schedule doesn't trigger a needless KV
  * write. (`fetchedAt` lives at the snapshot's top level, not in `media`, so it's
  * already excluded from this comparison.)
  */
@@ -299,7 +299,7 @@ async function main() {
   }
 
   const jobs = seedWindow()
-  // jobs[0] is the current season — the only one with live countdowns that go
+  // jobs[0] is the current season: the only one with live countdowns that go
   // stale within hours. If that one fails, the run must go red (see below).
   const currentKey = `anilist:season:v2:${jobs[0].season}:${jobs[0].year}`
   console.log(
@@ -320,11 +320,11 @@ async function main() {
     try {
       const result = await fetchSeason(season, year)
       if (result.media.length === 0) {
-        console.log(`${season} ${year} — 0 judul (lewati)`)
+        console.log(`${season} ${year}: 0 judul (lewati)`)
         continue
       }
       // Write-if-changed: skip the PUT when the snapshot is identical to what's
-      // already in KV (ignoring volatile fields — see seasonSignature). A GET
+      // already in KV (ignoring volatile fields; see seasonSignature). A GET
       // comes from the roomy 100k/day read bucket; the PUT it saves comes from
       // the scarce 1000/day write bucket. Upcoming/past seasons rarely change.
       const existing = (await getKv(key)) as { media?: unknown[] } | null
@@ -334,18 +334,18 @@ async function main() {
       if (changed) {
         if (!DRY_RUN) await putKv(key, result)
         wrote++
-        console.log(`✓ ${season} ${year} — ${result.media.length} judul`)
+        console.log(`✓ ${season} ${year}: ${result.media.length} judul`)
       } else {
         unchanged++
         console.log(
-          `= ${season} ${year} — ${result.media.length} judul (tak berubah, skip)`,
+          `= ${season} ${year}: ${result.media.length} judul (tak berubah, skip)`,
         )
       }
       allResults.set(key, { season, year, media: result.media })
     } catch (err) {
       failed++
       console.error(
-        `✗ ${season} ${year} — ${err instanceof Error ? err.message : err}`,
+        `✗ ${season} ${year}: ${err instanceof Error ? err.message : err}`,
       )
     }
   }
@@ -364,8 +364,8 @@ async function main() {
   // this exit code is the alarm that the seed pipeline needs attention.
   if (!DRY_RUN && !allResults.has(currentKey)) {
     console.error(
-      `\nFATAL: musim berjalan (${jobs[0].season} ${jobs[0].year}) gagal di-seed ` +
-        `— KV tidak diperbarui. Lihat error di atas (biasanya AniList 403 ke IP ` +
+      `\nFATAL: musim berjalan (${jobs[0].season} ${jobs[0].year}) gagal di-seed. ` +
+        `KV tidak diperbarui. Lihat error di atas (biasanya AniList 403 ke IP ` +
         `runner, atau limit tulis KV harian Cloudflare). Countdown basi sampai ` +
         `run berikutnya berhasil.`,
     )

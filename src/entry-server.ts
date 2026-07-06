@@ -1,4 +1,7 @@
-import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server'
+import {
+  createStartHandler,
+  defaultStreamHandler,
+} from '@tanstack/react-start/server'
 
 const SITE = 'https://anime-live-schedule.mzainalmuttaqin6.workers.dev'
 const MIN_YEAR = 1960
@@ -11,11 +14,11 @@ const SECURITY_HEADERS: Record<string, string> = {
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-  "Content-Security-Policy":
+  'Content-Security-Policy':
     "default-src 'self'; " +
     "script-src 'self' 'unsafe-inline'; " +
     "style-src 'self' 'unsafe-inline'; " +
-    'img-src \'self\' https: data:; ' +
+    "img-src 'self' https: data:; " +
     "connect-src 'self' https://graphql.anilist.co; " +
     "frame-ancestors 'none'; " +
     "form-action 'self'; " +
@@ -32,7 +35,14 @@ function withSecurityHeaders(response: Response): Response {
 function getCurrentSeason(now: Date) {
   const month = now.getUTCMonth()
   const year = now.getUTCFullYear()
-  const season = month <= 2 ? 'winter' : month <= 5 ? 'spring' : month <= 8 ? 'summer' : 'fall'
+  const season =
+    month <= 2
+      ? 'winter'
+      : month <= 5
+        ? 'spring'
+        : month <= 8
+          ? 'summer'
+          : 'fall'
   return { season, year }
 }
 
@@ -48,10 +58,14 @@ function generateSitemap(): string {
       const seasonIdx = SEASONS.indexOf(season)
       if (year === maxYear && seasonIdx > currentIdx) continue
       if (year === MIN_YEAR && seasonIdx < currentIdx) continue
-      const priority = year === current.year && season === current.season ? '1.0'
-        : year === current.year ? '0.9'
-        : year === current.year - 1 ? '0.7'
-        : '0.5'
+      const priority =
+        year === current.year && season === current.season
+          ? '1.0'
+          : year === current.year
+            ? '0.9'
+            : year === current.year - 1
+              ? '0.7'
+              : '0.5'
       urls.push(`  <url>
     <loc>${SITE}/${season}/${year}</loc>
     <changefreq>${year === current.year ? 'weekly' : 'monthly'}</changefreq>
@@ -72,10 +86,9 @@ export default {
 
     if (url.pathname === '/robots.txt') {
       return withSecurityHeaders(
-        new Response(
-          `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml`,
-          { headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
-        ),
+        new Response(`User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml`, {
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        }),
       )
     }
 

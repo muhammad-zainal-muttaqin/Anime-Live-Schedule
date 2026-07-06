@@ -26,7 +26,7 @@ export const Route = createFileRoute('/seed')({
   component: () => (
     <div className="min-h-dvh bg-bg text-ink flex items-center justify-center">
       <p className="text-sm text-ink-muted">
-        Halaman seed dinonaktifkan — seeding otomatis via GitHub Actions.
+        Halaman seed dinonaktifkan. Seeding otomatis via GitHub Actions.
       </p>
     </div>
   ),

@@ -55,7 +55,14 @@ describe('formatBucketOf', () => {
 
 describe('parseSearch', () => {
   it('coerces garbage to defaults without throwing', () => {
-    const parsed = parseSearch({ q: 42, format: 'nope', sort: 'zzz', dir: 'up', view: [], genre: 9 })
+    const parsed = parseSearch({
+      q: 42,
+      format: 'nope',
+      sort: 'zzz',
+      dir: 'up',
+      view: [],
+      genre: 9,
+    })
     expect(parsed).toEqual({
       q: '',
       format: 'all',
@@ -68,7 +75,13 @@ describe('parseSearch', () => {
   })
 
   it('keeps valid values', () => {
-    const parsed = parseSearch({ q: 'frieren', format: 'tv', genre: 'Action,Comedy', sort: 'score', view: 'list' })
+    const parsed = parseSearch({
+      q: 'frieren',
+      format: 'tv',
+      genre: 'Action,Comedy',
+      sort: 'score',
+      view: 'list',
+    })
     expect(parsed).toEqual({
       q: 'frieren',
       format: 'tv',
@@ -90,7 +103,10 @@ describe('parseSearch', () => {
 
 describe('resolveFilters', () => {
   it('splits genres and resolves the natural direction', () => {
-    const filters = resolveFilters({ genre: 'Action,Comedy', sort: 'countdown' })
+    const filters = resolveFilters({
+      genre: 'Action,Comedy',
+      sort: 'countdown',
+    })
     expect(filters.genres).toEqual(['Action', 'Comedy'])
     expect(filters.dir).toBe('asc')
     expect(filters.format).toBe('all')
@@ -120,7 +136,11 @@ describe('hasActiveFilters', () => {
 
 describe('matchesSearch', () => {
   const media = makeMedia({
-    title: { romaji: 'Sousou no Frieren', english: 'Frieren: Beyond Journey’s End', native: '葬送のフリーレン' },
+    title: {
+      romaji: 'Sousou no Frieren',
+      english: 'Frieren: Beyond Journey’s End',
+      native: '葬送のフリーレン',
+    },
     studios: { nodes: [{ id: 1, name: 'Madhouse' }] },
   })
 
@@ -136,7 +156,9 @@ describe('matchesSearch', () => {
   })
 
   it('is diacritic-insensitive', () => {
-    const macron = makeMedia({ title: { romaji: 'Ōoku', english: null, native: null } })
+    const macron = makeMedia({
+      title: { romaji: 'Ōoku', english: null, native: null },
+    })
     expect(matchesSearch(macron, 'ooku')).toBe(true)
   })
 
@@ -186,30 +208,50 @@ describe('compareBy', () => {
     const tiedPopular = makeMedia({ averageScore: 80, popularity: 900 })
     const tiedNiche = makeMedia({ averageScore: 80, popularity: 20 })
     const unscored = makeMedia({ averageScore: null, popularity: 99999 })
-    const sorted = [unscored, tiedNiche, high, tiedPopular].sort(compareBy('score', 'desc'))
+    const sorted = [unscored, tiedNiche, high, tiedPopular].sort(
+      compareBy('score', 'desc'),
+    )
     expect(sorted).toEqual([high, tiedPopular, tiedNiche, unscored])
   })
 
   it('countdown: soonest first, unscheduled shows last ordered by start date', () => {
-    const soon = makeMedia({ nextAiringEpisode: { airingAt: 1000, timeUntilAiring: 0, episode: 2 } })
-    const later = makeMedia({ nextAiringEpisode: { airingAt: 5000, timeUntilAiring: 0, episode: 1 } })
-    const unscheduledEarly = makeMedia({ startDate: { year: 2026, month: 7, day: 1 } })
-    const unscheduledLate = makeMedia({ startDate: { year: 2026, month: 9, day: 1 } })
-    const sorted = [unscheduledLate, later, unscheduledEarly, soon].sort(compareBy('countdown', 'asc'))
+    const soon = makeMedia({
+      nextAiringEpisode: { airingAt: 1000, timeUntilAiring: 0, episode: 2 },
+    })
+    const later = makeMedia({
+      nextAiringEpisode: { airingAt: 5000, timeUntilAiring: 0, episode: 1 },
+    })
+    const unscheduledEarly = makeMedia({
+      startDate: { year: 2026, month: 7, day: 1 },
+    })
+    const unscheduledLate = makeMedia({
+      startDate: { year: 2026, month: 9, day: 1 },
+    })
+    const sorted = [unscheduledLate, later, unscheduledEarly, soon].sort(
+      compareBy('countdown', 'asc'),
+    )
     expect(sorted).toEqual([soon, later, unscheduledEarly, unscheduledLate])
   })
 
   it('title: locale-aware and case-insensitive', () => {
-    const a = makeMedia({ title: { romaji: 'bocchi the rock', english: null, native: null } })
-    const b = makeMedia({ title: { romaji: 'Akira', english: null, native: null } })
+    const a = makeMedia({
+      title: { romaji: 'bocchi the rock', english: null, native: null },
+    })
+    const b = makeMedia({
+      title: { romaji: 'Akira', english: null, native: null },
+    })
     expect([a, b].sort(compareBy('title', 'asc'))[0]).toBe(b)
     expect([a, b].sort(compareBy('title', 'desc'))[0]).toBe(a)
   })
 
   it('start: handles fuzzy dates with missing month/day, null years last', () => {
     const january = makeMedia({ startDate: { year: 2026, month: 1, day: 15 } })
-    const yearOnly = makeMedia({ startDate: { year: 2026, month: null, day: null } })
-    const unknown = makeMedia({ startDate: { year: null, month: null, day: null } })
+    const yearOnly = makeMedia({
+      startDate: { year: 2026, month: null, day: null },
+    })
+    const unknown = makeMedia({
+      startDate: { year: null, month: null, day: null },
+    })
     const sorted = [january, unknown, yearOnly].sort(compareBy('start', 'asc'))
     expect(sorted).toEqual([yearOnly, january, unknown])
   })
@@ -217,9 +259,24 @@ describe('compareBy', () => {
 
 describe('applyFilters', () => {
   const media = [
-    makeMedia({ format: 'TV', genres: ['Action'], popularity: 100, title: { romaji: 'Alpha', english: null, native: null } }),
-    makeMedia({ format: 'MOVIE', genres: ['Action', 'Drama'], popularity: 300, title: { romaji: 'Beta', english: null, native: null } }),
-    makeMedia({ format: 'ONA', genres: ['Comedy'], popularity: 200, title: { romaji: 'Gamma', english: null, native: null } }),
+    makeMedia({
+      format: 'TV',
+      genres: ['Action'],
+      popularity: 100,
+      title: { romaji: 'Alpha', english: null, native: null },
+    }),
+    makeMedia({
+      format: 'MOVIE',
+      genres: ['Action', 'Drama'],
+      popularity: 300,
+      title: { romaji: 'Beta', english: null, native: null },
+    }),
+    makeMedia({
+      format: 'ONA',
+      genres: ['Comedy'],
+      popularity: 200,
+      title: { romaji: 'Gamma', english: null, native: null },
+    }),
   ]
 
   it('combines format, search, and genre filters then sorts', () => {

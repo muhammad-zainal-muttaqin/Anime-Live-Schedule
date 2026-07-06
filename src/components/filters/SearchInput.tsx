@@ -13,7 +13,11 @@ const DEBOUNCE_MS = 200
  * Debounced title/studio search. Keeps a local draft so typing stays instant
  * while URL updates (and the re-filter) trail by one debounce tick.
  */
-export function SearchInput({ value, onChange, className = '' }: SearchInputProps) {
+export function SearchInput({
+  value,
+  onChange,
+  className = '',
+}: SearchInputProps) {
   const [draft, setDraft] = useState(value)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const committed = useRef(value)

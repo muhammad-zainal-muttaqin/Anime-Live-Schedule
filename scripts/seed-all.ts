@@ -2,7 +2,7 @@
  * One-time bulk seed: fetch every pickable season from AniList and write it to
  * Cloudflare KV via the REST API.
  *
- * Run from a normal (non-Cloudflare) IP — AniList blocks Worker IPs but not this
+ * Run from a normal (non-Cloudflare) IP: AniList blocks Worker IPs but not this
  * machine. After this, every season a user can pick is already in KV, so visitors
  * never trigger an AniList fetch. The /seed page then only refreshes the current
  * and upcoming seasons.
@@ -30,7 +30,7 @@ import {
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
 const SEARCH_INDEX_KEY = 'anilist:search:v1:index'
 const PER_PAGE = 50
-const ANILIST_PACING_MS = 700 // 85 req/mnt — stay under 90
+const ANILIST_PACING_MS = 700 // 85 req/mnt, stay under 90
 const ANILIST_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 
@@ -42,7 +42,7 @@ const DRY_RUN = process.argv.includes('--dry-run')
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-/** Global rate limiter — ensures requests are ≥ ANILIST_PACING_MS apart. */
+/** Global rate limiter; ensures requests are ≥ ANILIST_PACING_MS apart. */
 let lastRequestTime = 0
 async function rateLimit() {
   const now = Date.now()
@@ -62,7 +62,7 @@ async function anilistGraphQL(variables: Record<string, unknown>): Promise<{
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        // See seed-recent.ts — a browser-like UA lowers Cloudflare's 403 rate.
+        // See seed-recent.ts: a browser-like UA lowers Cloudflare's 403 rate.
         'User-Agent': ANILIST_USER_AGENT,
       },
       body: JSON.stringify({ query: SEASONAL_QUERY, variables }),
@@ -233,7 +233,7 @@ async function writeSearchIndex(
   // Deterministic order so the write-if-changed compare (and the committed
   // search-index.json diff) is stable across runs.
   index.sort((a, b) => a.id - b.id)
-  console.log(`\nBuilding search index — ${index.length} entries`)
+  console.log(`\nBuilding search index: ${index.length} entries`)
 
   if (JSON.stringify(index) === JSON.stringify(await getKv(SEARCH_INDEX_KEY))) {
     console.log('Search index unchanged, skipping write.')
@@ -258,7 +258,7 @@ async function main() {
   }
 
   console.log(
-    `Seeding ${jobs.length} seasons (${MIN_YEAR}–${maxYear}) → KV ${NAMESPACE_ID}` +
+    `Seeding ${jobs.length} seasons (${MIN_YEAR}-${maxYear}) → KV ${NAMESPACE_ID}` +
       (DRY_RUN ? '  [DRY RUN, no writes]' : ''),
   )
 
@@ -281,7 +281,7 @@ async function main() {
         empty++
         continue // nothing to cache; browser fallback would also get empty
       }
-      // Write-if-changed — skip the PUT for seasons already identical in KV
+      // Write-if-changed: skip the PUT for seasons already identical in KV
       // (most past seasons never change). A GET is far cheaper than a PUT here.
       const existing = (await getKv(key)) as { media?: unknown[] } | null
       const changed =
@@ -290,18 +290,18 @@ async function main() {
       if (changed) {
         if (!DRY_RUN) await putKv(key, result)
         wrote++
-        console.log(`  ✓ ${season} ${year} — ${result.media.length} titles`)
+        console.log(`  ✓ ${season} ${year}: ${result.media.length} titles`)
       } else {
         unchanged++
         console.log(
-          `  = ${season} ${year} — ${result.media.length} titles (unchanged)`,
+          `  = ${season} ${year}: ${result.media.length} titles (unchanged)`,
         )
       }
       allResults.set(key, { season, year, media: result.media })
     } catch (err) {
       failed++
       console.error(
-        `  ✗ ${season} ${year} — ${err instanceof Error ? err.message : err}`,
+        `  ✗ ${season} ${year}: ${err instanceof Error ? err.message : err}`,
       )
     }
   }
@@ -314,11 +314,11 @@ async function main() {
     await writeSearchIndex(allResults)
   }
 
-  // Fetched nothing at all — almost always AniList 403ing this IP. Exit non-zero
+  // Fetched nothing at all: almost always AniList 403ing this IP. Exit non-zero
   // so the failure is visible instead of a silent green run.
   if (!DRY_RUN && allResults.size === 0) {
     console.error(
-      '\nFATAL: 0 musim berhasil di-seed — lihat error di atas (biasanya AniList 403, ' +
+      '\nFATAL: 0 musim berhasil di-seed. Lihat error di atas (biasanya AniList 403, ' +
         'atau limit tulis KV harian Cloudflare). KV tidak diperbarui.',
     )
     process.exit(1)

@@ -6,9 +6,9 @@ product
 
 ## Users
 
-Anime watchers deciding what to watch. They arrive to answer a concrete question —
-"what's airing this season?", "what's coming next season?", "when's the next episode
-of the show I follow?" — and they scan, they don't read. Sessions are short, often
+Anime watchers deciding what to watch. They arrive to answer a concrete question
+("what's airing this season?", "what's coming next season?", "when's the next episode
+of the show I follow?") and they scan, they don't read. Sessions are short, often
 on a phone, often in downtime (commute, break, before bed). Fluency with the domain
 is high (they know seasons, studios, formats); patience for chrome is low.
 
@@ -28,16 +28,16 @@ well-built broadcast guide, not a fan-site and not a generic SaaS dashboard.
 
 ## Anti-references
 
-- **MyAnimeList / classic aggregators** — dense, dated, cluttered with boxes and ads.
-- **Generic dark SaaS dashboards** — violet-on-charcoal with no point of view.
-- **AI-slop landing pages** — gradient text, glass cards, eyebrow kickers, hero-metric
+- **MyAnimeList / classic aggregators**: dense, dated, cluttered with boxes and ads.
+- **Generic dark SaaS dashboards**: violet-on-charcoal with no point of view.
+- **AI-slop landing pages**: gradient text, glass cards, eyebrow kickers, hero-metric
   templates. This is a tool, not a pitch.
 
 ## Design Principles
 
 1. **Poster art is the hero.** Chrome recedes; color and contrast serve the artwork.
 2. **Glance over read.** Every card answers "what / how good / when" without a click.
-3. **Color carries the season.** The accent hue *is* the current season — meaning, not
+3. **Color carries the season.** The accent hue _is_ the current season: meaning, not
    decoration. State you can feel.
 4. **Earned familiarity.** Standard affordances (tabs, selects, modal) done precisely.
    No invented controls; the tool disappears into the task.
@@ -50,5 +50,5 @@ well-built broadcast guide, not a fan-site and not a generic SaaS dashboard.
 - Full keyboard path: focus-visible rings on every interactive element; modal closes on
   Esc and restores focus; grid is native links.
 - `prefers-reduced-motion` honored on every animation (crossfade / instant fallback).
-- Season accent is never the *only* signal — countdown text, status label, and icons
+- Season accent is never the _only_ signal: countdown text, status label, and icons
   carry meaning independent of hue (color-blind safe).

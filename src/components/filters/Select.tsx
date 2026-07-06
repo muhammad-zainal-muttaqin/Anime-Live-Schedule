@@ -13,7 +13,7 @@ interface SelectProps<T extends string | number> {
 
 /**
  * Custom single-select listbox. The native `<select>` popup is OS-drawn and
- * can't be themed, so it clashed with the dark UI — this renders the open
+ * can't be themed, so it clashed with the dark UI; this renders the open
  * list as a styled panel (same vocabulary as GenreMenu) while keeping the
  * full keyboard path: arrows, Home/End, type-ahead, Enter/Esc.
  */

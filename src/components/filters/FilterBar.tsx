@@ -19,7 +19,7 @@ interface FilterBarProps {
 /**
  * The season toolbar. Desktop (≥sm) lays every facet inline:
  * format · search · genre (with 16+) · sort · view. Mobile collapses to
- * search + one Filter button that opens the bottom sheet — the toolbar
+ * search + one Filter button that opens the bottom sheet, so the toolbar
  * stays one row instead of stacking four.
  */
 export function FilterBar({

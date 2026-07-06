@@ -38,16 +38,16 @@ export const Route = createFileRoute('/$season/$year/$id')({
     const title = anime ? pickTitle(anime.title) : `Anime #${params.id}`
     const description = anime?.description
       ? anime.description
-      : `Detail anime dari ${seasonLabel} — lihat informasi lengkap, sinopsis, skor, genre, studio, dan jadwal episode.`
+      : `Detail anime dari ${seasonLabel}: lihat informasi lengkap, sinopsis, skor, genre, studio, dan jadwal episode.`
     const image =
       anime?.coverImage.extraLarge ?? anime?.coverImage.large ?? undefined
     return {
       meta: [
-        { title: `${title} — AnimeSeasons` },
+        { title: `${title} | AnimeSeasons` },
         { name: 'description', content: description },
         {
           property: 'og:title',
-          content: `${title} — AnimeSeasons (${seasonLabel})`,
+          content: `${title} | AnimeSeasons (${seasonLabel})`,
         },
         { property: 'og:description', content: description },
         ...(image ? [{ property: 'og:image' as const, content: image }] : []),
@@ -80,7 +80,7 @@ function DetailRoute() {
     enabled: validId && typeof window !== 'undefined',
   })
 
-  // A non-numeric /:id can't be a real AniList title — don't fire a doomed fetch.
+  // A non-numeric /:id can't be a real AniList title; don't fire a doomed fetch.
   if (!validId)
     return <DetailError error={new Error(`Invalid anime id: ${params.id}`)} />
   if (error) return <DetailError error={error} />
@@ -97,7 +97,7 @@ function ModalShell({
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Esc, scroll-lock, focus-trap, and focus-restore — see useDialog.
+  // Esc, scroll-lock, focus-trap, and focus-restore; see useDialog.
   useDialog(containerRef, onClose)
 
   return (
@@ -155,7 +155,7 @@ function DetailError({ error }: { error: Error }) {
         <span className="grid h-12 w-12 place-items-center rounded-2xl bg-surface-2 text-2xl ring-1 ring-border">
           ⚠️
         </span>
-        <p className="text-lg font-semibold text-ink">Gagal memuat detail</p>
+        <p className="text-xl font-semibold text-ink">Gagal memuat detail</p>
         <p className="max-w-sm text-sm text-ink-subtle">
           Coba refresh halaman atau tunggu beberapa saat.
         </p>

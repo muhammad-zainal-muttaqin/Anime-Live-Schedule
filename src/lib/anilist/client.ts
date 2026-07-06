@@ -1,5 +1,5 @@
 /**
- * Direct AniList GraphQL client — plain `fetch`, no Cloudflare imports, so it
+ * Direct AniList GraphQL client: plain `fetch`, no Cloudflare imports, so it
  * runs anywhere: the browser, local dev, and the GitHub Actions refresh job.
  *
  * Important: this must NOT be called from a Cloudflare Worker. AniList blocks
@@ -60,7 +60,7 @@ export async function anilistGraphQL<T>(
       })
     } catch (err) {
       lastError = err
-      continue // network hiccup — retry
+      continue // network hiccup, retry
     }
 
     if (res.status === 429 || res.status >= 500) {
@@ -117,7 +117,7 @@ export async function fetchSeasonalPaged(
       page,
       perPage: PER_PAGE,
     })
-    // Season snapshots only need a synopsis preview — truncating here keeps
+    // Season snapshots only need a synopsis preview; truncating here keeps
     // the KV payload and SSR-dehydrated HTML small (detail fetches full text).
     media.push(
       ...payload.Page.media.map((m) => ({

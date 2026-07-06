@@ -12,7 +12,7 @@ interface GenreMenuProps {
 
 /**
  * Disclosure button + checkbox panel for the multi-select genre facet.
- * The 16+ content toggle lives here too — it's a content facet, not a
+ * The 16+ content toggle lives here too: it's a content facet, not a
  * toolbar-level control.
  */
 export function GenreMenu({
@@ -110,7 +110,7 @@ export function GenreMenu({
   )
 }
 
-/** Checkbox rows for the genre facet — shared by the popover and the mobile sheet. */
+/** Checkbox rows for the genre facet, shared by the popover and the mobile sheet. */
 export function GenreList({
   options,
   selected,
@@ -153,7 +153,7 @@ export function GenreList({
   )
 }
 
-/** The 16+ content switch — shared by the genre popover and the mobile sheet. */
+/** The 16+ content switch, shared by the genre popover and the mobile sheet. */
 export function AdultToggleRow({
   checked,
   onChange,

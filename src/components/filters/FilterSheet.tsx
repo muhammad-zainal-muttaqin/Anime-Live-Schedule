@@ -37,7 +37,7 @@ export function FilterSheet({
   const closeRef = useRef<HTMLButtonElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Esc, scroll-lock, focus-trap, and focus-restore — see useDialog.
+  // Esc, scroll-lock, focus-trap, and focus-restore; see useDialog.
   useDialog(containerRef, onClose, closeRef)
 
   const dir = filters.dir

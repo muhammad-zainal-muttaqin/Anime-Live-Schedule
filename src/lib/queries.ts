@@ -8,7 +8,7 @@ import type { Season } from '#/lib/anilist/season'
  * React Query options.
  *
  * Seasonal: ask the Worker (KV read) first. On a production cache miss the
- * server returns an empty result — so when we're in the browser we fetch AniList
+ * server returns an empty result, so when we're in the browser we fetch AniList
  * directly (non-blocked IP, AniList sends CORS `*`). SSR never fetches AniList,
  * which is exactly what keeps the Worker from hitting the 403.
  *
@@ -18,7 +18,7 @@ import type { Season } from '#/lib/anilist/season'
 
 // KV is reseeded every ~3h by CI. If it's older than that the seed pipeline is
 // behind (AniList 403s the runner IP intermittently), so the browser self-heals
-// by refetching directly — see the queryFn below.
+// by refetching directly; see the queryFn below.
 const SEASON_STALE_MS = 1000 * 60 * 60 * 3
 
 function seasonOrdinal(season: Season, year: number): number {

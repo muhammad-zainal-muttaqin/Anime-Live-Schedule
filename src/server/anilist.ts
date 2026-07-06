@@ -10,8 +10,8 @@ import type { SeasonalResult } from '#/lib/anilist/types'
  * IMPORTANT: AniList blocks the shared Cloudflare Workers IP range (403), so the
  * Worker must never fetch AniList directly. Everything here only ever reads from
  * or writes to KV. Fresh data reaches KV two ways, both from non-blocked IPs:
- *   - the GitHub Actions cron (`.github/workflows/seed-recent.yml` —
- *     fetches AniList, writes directly to KV via REST API)
+ *   - the GitHub Actions cron (`.github/workflows/seed-recent.yml`, which
+ *     fetches AniList and writes directly to KV via REST API)
  *   - the on-demand browser fallback in `src/lib/queries.ts`
  * In local dev there's no IP block, so a cache miss is allowed to fetch AniList
  * to keep the DX smooth.
@@ -22,14 +22,20 @@ import type { SeasonalResult } from '#/lib/anilist/types'
 const SEASONAL_TTL_SECONDS = 60 * 60 * 24 * 30 // 30 days
 
 const EMPTY_RESULT: SeasonalResult = {
-  pageInfo: { total: 0, currentPage: 0, lastPage: 0, hasNextPage: false, perPage: 0 },
+  pageInfo: {
+    total: 0,
+    currentPage: 0,
+    lastPage: 0,
+    hasNextPage: false,
+    perPage: 0,
+  },
   media: [],
   fetchedAt: 0,
 }
 
 /**
  * Grab the KV cache binding. Imported dynamically so `cloudflare:workers` never
- * lands in the client bundle — this only ever runs inside a server function
+ * lands in the client bundle; this only ever runs inside a server function
  * handler, which is stripped from client builds. Returns undefined if the
  * binding is missing (e.g. running outside Workers) so we degrade gracefully.
  */
@@ -69,7 +75,11 @@ async function kvGetJson<T>(key: string): Promise<T | null> {
   }
 }
 
-async function kvPutJson(key: string, value: unknown, ttlSeconds: number): Promise<void> {
+async function kvPutJson(
+  key: string,
+  value: unknown,
+  ttlSeconds: number,
+): Promise<void> {
   const cache = await getCache()
   if (!cache) return
   try {
@@ -84,7 +94,10 @@ interface SeasonInput {
   year: number
 }
 
-function validateSeasonInput(input: SeasonInput): { season: Season; year: number } {
+function validateSeasonInput(input: SeasonInput): {
+  season: Season
+  year: number
+} {
   if (!isSeason(input.season)) {
     throw new Error('Invalid season parameter')
   }

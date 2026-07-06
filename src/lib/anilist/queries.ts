@@ -10,8 +10,8 @@
 /**
  * Lean field set for the seasonal grid snapshot (cached in KV + dehydrated into
  * SSR HTML for ~100 titles). Deliberately omits fields nothing in the grid /
- * list / OG head reads: idMal, bannerImage, season, seasonYear. `synonyms` stays
- * — the search index is built from these results and needs it for alt titles.
+ * list / OG head reads: idMal, bannerImage, season, seasonYear. `synonyms`
+ * stays: the search index is built from these results and needs it for alt titles.
  */
 const SEASONAL_FIELDS = `
   id
@@ -33,7 +33,7 @@ const SEASONAL_FIELDS = `
   description(asHtml: false)
 `
 
-/** Full field set for the detail modal — includes what SEASONAL_FIELDS trims. */
+/** Full field set for the detail modal; includes what SEASONAL_FIELDS trims. */
 const MEDIA_CARD_FIELDS = `
   ${SEASONAL_FIELDS}
   idMal

@@ -30,7 +30,8 @@ export const AnimeListRow = memo(function AnimeListRow({
 }: AnimeListRowProps) {
   const title = pickTitle(anime.title)
   const score = formatScore(anime.averageScore)
-  const cover = anime.coverImage.large ?? anime.coverImage.extraLarge ?? undefined
+  const cover =
+    anime.coverImage.large ?? anime.coverImage.extraLarge ?? undefined
   const airing = anime.nextAiringEpisode
 
   const meta = [
@@ -53,10 +54,20 @@ export const AnimeListRow = memo(function AnimeListRow({
     >
       <div
         className="relative aspect-[2/3] w-20 shrink-0 self-start overflow-hidden rounded-lg bg-surface-2 ring-1 ring-border transition group-hover:ring-accent-line sm:w-24"
-        style={anime.coverImage.color ? { backgroundColor: anime.coverImage.color } : undefined}
+        style={
+          anime.coverImage.color
+            ? { backgroundColor: anime.coverImage.color }
+            : undefined
+        }
       >
         {cover ? (
-          <img src={cover} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+          <img
+            src={cover}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
         ) : null}
       </div>
 
@@ -64,7 +75,9 @@ export const AnimeListRow = memo(function AnimeListRow({
         <h3 className="line-clamp-2 font-semibold leading-snug text-ink transition-colors group-hover:text-accent">
           {title}
         </h3>
-        {meta ? <p className="mt-1 line-clamp-1 text-xs text-ink-subtle">{meta}</p> : null}
+        {meta ? (
+          <p className="mt-1 line-clamp-1 text-xs text-ink-subtle">{meta}</p>
+        ) : null}
 
         {anime.genres.length > 0 ? (
           <ul className="mt-2 flex flex-wrap gap-1">

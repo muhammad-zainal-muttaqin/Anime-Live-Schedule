@@ -4,14 +4,20 @@
  * AnimeSeasons design system.
  *
  * Product-register app UI: the poster art is the hero, the chrome recedes.
- * Color carries meaning — a single accent that *is* the current season
+ * Color carries meaning: a single accent that *is* the current season
  * (winter=ice, spring=sakura, summer=aqua, fall=ember). Everything else is a
  * layered near-black neutral. Tokens are semantic (surface / ink / accent),
  * not raw scale values, and every text pair is verified ≥4.5:1.
  */
 
 @theme {
-  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans:
+    'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Extra breakpoint below sm: under it the season tabs go emoji-only so the
+     picker always fits a narrow phone without scrolling. 25rem keeps the
+     active label visible on 400px+ phones (iPhone XR/Pro Max class). */
+  --breakpoint-xs: 25rem;
 
   /* Semantic colors → expose the runtime CSS vars as Tailwind utilities. */
   --color-canvas: var(--bg);
@@ -31,7 +37,7 @@
   --color-accent-line: var(--accent-line);
   --color-accent-ring: var(--accent-ring);
 
-  /* Motion — exponential ease-outs, no bounce. */
+  /* Motion: exponential ease-outs, no bounce. */
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -47,7 +53,7 @@
   --border: oklch(1 0 0 / 0.09);
   --border-strong: oklch(1 0 0 / 0.16);
 
-  /* Ink ramp — all ≥4.5:1 on --bg and --surface. */
+  /* Ink ramp: all ≥4.5:1 on --bg and --surface. */
   --ink: oklch(0.97 0.005 265);
   --ink-muted: oklch(0.74 0.012 265);
   --ink-subtle: oklch(0.62 0.014 265);
@@ -57,6 +63,10 @@
   --accent-h: 248;
   --accent-strong-l: 0.54;
   --accent-ink: oklch(0.99 0 0);
+  /* Glow hue mirrors --accent-h but stays unregistered on purpose: the ambient
+     gradient snaps to the new season in one repaint instead of rasterizing a
+     full-viewport gradient on every frame of the 0.5s accent morph. */
+  --glow-h: 248;
 
   --accent: oklch(0.74 0.15 var(--accent-h));
   --accent-strong: oklch(var(--accent-strong-l) 0.15 var(--accent-h));
@@ -65,25 +75,58 @@
   --accent-ring: oklch(0.74 0.15 var(--accent-h) / 0.6);
 }
 
+/* Register the three season variables as typed properties so they can
+   transition: switching seasons then morphs the whole shell's accent (glow,
+   chips, countdowns, logo tile) instead of snapping. Browsers without
+   @property simply keep the instant switch. */
+@property --accent-h {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 248;
+}
+@property --accent-strong-l {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0.54;
+}
+@property --accent-ink {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: oklch(0.99 0 0);
+}
+
+/* The shell is where data-season changes at runtime; the pills carry a static
+   data-season each, so they keep their own hue and never animate it. */
+.season-ambient {
+  transition:
+    --accent-h 0.5s var(--ease-out-quint),
+    --accent-strong-l 0.5s var(--ease-out-quint),
+    --accent-ink 0.5s var(--ease-out-quint);
+}
+
 /* Season identities. Only the hue, the fill lightness, and the ink on the fill
    change; every derived token above recomputes from these three. */
 [data-season='winter'] {
   --accent-h: 248;
+  --glow-h: 248;
   --accent-strong-l: 0.54;
   --accent-ink: oklch(0.99 0 0);
 }
 [data-season='spring'] {
   --accent-h: 352;
+  --glow-h: 352;
   --accent-strong-l: 0.55;
   --accent-ink: oklch(0.99 0 0);
 }
 [data-season='summer'] {
   --accent-h: 195;
+  --glow-h: 195;
   --accent-strong-l: 0.74;
   --accent-ink: oklch(0.21 0.03 220);
 }
 [data-season='fall'] {
   --accent-h: 62;
+  --glow-h: 62;
   --accent-strong-l: 0.78;
   --accent-ink: oklch(0.22 0.04 65);
 }
@@ -125,14 +168,14 @@ h3 {
   outline-offset: 2px;
 }
 
-/* Thin neutral scrollbars — a hint, not a reinvented control. */
+/* Thin neutral scrollbars: a hint, not a reinvented control. */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--surface-2) transparent;
 }
 
 /* Season-tinted ambient glow. Fixed to the viewport, sits behind content, and
-   shifts hue with whatever [data-season] wraps it. */
+   follows [data-season] via --glow-h (snaps, not tweened; see :root note). */
 .season-ambient::before {
   content: '';
   position: fixed;
@@ -142,12 +185,12 @@ h3 {
   background:
     radial-gradient(
       55rem 38rem at 12% -8%,
-      oklch(0.55 0.16 var(--accent-h) / 0.16),
+      oklch(0.55 0.16 var(--glow-h) / 0.16),
       transparent 60%
     ),
     radial-gradient(
       44rem 36rem at 100% 0%,
-      oklch(0.55 0.13 calc(var(--accent-h) + 35) / 0.1),
+      oklch(0.55 0.13 calc(var(--glow-h) + 35) / 0.1),
       transparent 55%
     );
 }
@@ -195,6 +238,77 @@ h3 {
   animation: sheet-up 0.28s var(--ease-out-expo);
 }
 
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Staggered entrance for the season grid/list. Delays live on nth-child (not
+   inline --i custom properties) so React prop updates while filtering can't
+   restart finished animations. The base delay equals the cap, so items beyond
+   the wave enter together, last, instead of before the first row. */
+.stagger-children > * {
+  animation: card-in 0.3s var(--ease-out-quint) backwards;
+  animation-delay: 0.36s;
+}
+.stagger-children > :nth-child(1) {
+  animation-delay: 0s;
+}
+.stagger-children > :nth-child(2) {
+  animation-delay: 0.03s;
+}
+.stagger-children > :nth-child(3) {
+  animation-delay: 0.06s;
+}
+.stagger-children > :nth-child(4) {
+  animation-delay: 0.09s;
+}
+.stagger-children > :nth-child(5) {
+  animation-delay: 0.12s;
+}
+.stagger-children > :nth-child(6) {
+  animation-delay: 0.15s;
+}
+.stagger-children > :nth-child(7) {
+  animation-delay: 0.18s;
+}
+.stagger-children > :nth-child(8) {
+  animation-delay: 0.21s;
+}
+.stagger-children > :nth-child(9) {
+  animation-delay: 0.24s;
+}
+.stagger-children > :nth-child(10) {
+  animation-delay: 0.27s;
+}
+.stagger-children > :nth-child(11) {
+  animation-delay: 0.3s;
+}
+.stagger-children > :nth-child(12) {
+  animation-delay: 0.33s;
+}
+
+/* CSS-only virtualization for long card grids and list rows: offscreen items
+   skip style, layout, and paint entirely, so a 100+ card season switch only
+   pays for what's near the viewport. The intrinsic size is a pre-first-paint
+   estimate; `auto` remembers each item's real size once rendered. */
+.cv-cards > *,
+.cv-rows > * {
+  content-visibility: auto;
+}
+.cv-cards > * {
+  contain-intrinsic-size: auto 21rem;
+}
+.cv-rows > * {
+  contain-intrinsic-size: auto 10rem;
+}
+
 /* Reduced motion: collapse transforms to a plain crossfade, and neutralize any
    stray transitions/animations. Instant is the honest fallback. */
 @media (prefers-reduced-motion: reduce) {
@@ -206,6 +320,9 @@ h3 {
   ::before,
   ::after {
     animation-duration: 0.001ms !important;
+    /* Zero the delay too: stagger delays + fill backwards would otherwise
+       keep cards invisible until their slot even with zero duration. */
+    animation-delay: 0s !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;

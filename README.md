@@ -17,7 +17,7 @@ terbaru dan detail tiap judul. Data bersumber dari **AniList** dan di-cache di
 Sistem visual didokumentasikan di **`PRODUCT.md`** (strategi: user, brand, prinsip)
 dan **`DESIGN.md`** (token warna, tipografi, komponen, motion). Register: _product_.
 
-Ciri khas: **aksen mengikuti musim** — hue UI berubah sesuai musim yang dibuka
+Ciri khas: **aksen mengikuti musim**. Hue UI berubah sesuai musim yang dibuka
 (winter = biru es, spring = sakura, summer = aqua, fall = amber) lewat `[data-season]`
 dan satu variabel hue. Semua pasangan teks/latar diverifikasi kontras WCAG AA, ada
 dukungan `prefers-reduced-motion`, dan fokus keyboard di tiap kontrol. Token ada di
@@ -26,7 +26,7 @@ dukungan `prefers-reduced-motion`, dan fokus keyboard di tiap kontrol. Token ada
 ## Cara kerja data & caching
 
 > **Penting:** AniList memblokir rentang IP Cloudflare Workers (balas `403 "manually
-> blocked"`). Jadi **Worker tidak pernah fetch AniList langsung** — ia hanya baca/tulis
+blocked"`). Jadi **Worker tidak pernah fetch AniList langsung**; ia hanya baca/tulis
 > Cloudflare KV. Data masuk ke KV dari IP yang tidak diblokir.
 
 ```
@@ -41,9 +41,9 @@ Refresh: GitHub Actions cron (tiap 3 jam) ──▶ fetch AniList ──▶ tuli
 - **Baca:** `getSeasonalAnime(season, year)` → key `anilist:season:v2:{season}:{year}`.
   Hanya membaca KV di produksi. Kalau kosong, browser yang fetch (lihat `src/lib/queries.ts`).
 - **Tulis (otomatis):** GitHub Actions cron setiap 3 jam (`seed-recent.yml`) menjalankan
-  `scripts/seed-recent.ts` — fetch musim sekarang + 4 musim ke depan dari AniList,
+  `scripts/seed-recent.ts`: fetch musim sekarang + 4 musim ke depan dari AniList,
   lalu tulis langsung ke Cloudflare KV via REST API (TTL **30 hari**).
-- **Tulis (bulk):** `scripts/seed-all.ts` untuk seed semua musim 1960–tahun depan
+- **Tulis (bulk):** `scripts/seed-all.ts` untuk seed semua musim 1960 sampai tahun depan
   (dijalankan sekali dari lokal).
 - **Detail judul:** selalu di-fetch dari browser (`fetchAnimeDetail`), tidak lewat Worker.
 - Di **dev lokal** tidak ada blokir IP, jadi cache miss boleh fetch AniList langsung
@@ -55,7 +55,7 @@ Kode data layer: `src/server/anilist.ts` (KV read), `src/lib/anilist/client.ts`
 
 ## Cara mengisi & refresh data
 
-**Sekali di awal — isi semua musim (1960 → tahun depan) ke KV** dari mesin ber-IP normal
+**Sekali di awal: isi semua musim (1960 → tahun depan) ke KV** dari mesin ber-IP normal
 (bukan Worker), lewat Cloudflare API:
 
 ```bash
@@ -65,10 +65,10 @@ node --experimental-strip-types scripts/seed-all.ts --dry-run  # uji tanpa nulis
 
 Pakai env `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` (sudah ada di User env; token butuh
 izin **Workers KV Storage: Edit**). Musim kosong dilewati; musim lama tak pernah berubah jadi
-cukup sekali. Setelah ini **setiap musim yang bisa dipilih user sudah ada di KV** — pengunjung
-tidak pernah memicu fetch AniList.
+cukup sekali. Setelah ini **setiap musim yang bisa dipilih user sudah ada di KV**, jadi
+pengunjung tidak pernah memicu fetch AniList.
 
-**Otomatis — refresh musim berjalan & mendatang** via GitHub Actions cron:
+**Otomatis: refresh musim berjalan & mendatang** via GitHub Actions cron:
 `.github/workflows/seed-recent.yml` berjalan tiap **3 jam**, menjalankan
 `scripts/seed-recent.ts`. Data musim sekarang + 4 musim ke depan diperbarui langsung
 ke Cloudflare KV via REST API, tanpa perlu browser atau token rahasia.
@@ -80,7 +80,7 @@ ke Cloudflare KV via REST API, tanpa perlu browser atau token rahasia.
 | `/`                  | redirect ke musim & tahun berjalan      |
 | `/$season/$year`     | grid anime + picker musim/tahun         |
 | `/$season/$year/$id` | modal detail (bisa di-deep-link / SSR)  |
-| `/seed`              | (dinonaktifkan — dulu untuk seed manual)|
+| `/seed`              | (dinonaktifkan; dulu untuk seed manual) |
 
 `season` = `winter` \| `spring` \| `summer` \| `fall`.
 
@@ -98,17 +98,17 @@ Perintah lain: `pnpm build`, `pnpm preview`, `pnpm exec tsc --noEmit` (typecheck
 
 Kredensial akun ini **sudah tersimpan permanen di environment variable User-scope**
 (Windows), jadi Wrangler terautentikasi tanpa `wrangler login` interaktif. Referensikan
-lewat **nama**-nya — jangan pernah menulis nilainya ke file mana pun:
+lewat **nama**-nya; jangan pernah menulis nilainya ke file mana pun:
 
-| Env var | Kegunaan |
-| --- | --- |
+| Env var                 | Kegunaan                                               |
+| ----------------------- | ------------------------------------------------------ |
 | `CLOUDFLARE_ACCOUNT_ID` | ID akun; Wrangler & Cloudflare API memakainya otomatis |
-| `CLOUDFLARE_API_TOKEN` | Token auth; menggantikan `wrangler login` |
+| `CLOUDFLARE_API_TOKEN`  | Token auth; menggantikan `wrangler login`              |
 
 Cek keberadaannya (tanpa membocorkan nilai):
 
 ```bash
-# PowerShell — nama saja
+# PowerShell: nama saja
 [Environment]::GetEnvironmentVariables('User').Keys | Where-Object { $_ -match 'CLOUDFLARE' }
 ```
 
@@ -123,9 +123,9 @@ Auth sudah lewat env di atas, jadi langsung:
 pnpm run deploy                       # = vite build + wrangler deploy
 ```
 
-Cache diisi otomatis oleh GitHub Actions cron setiap 3 jam — tidak perlu warm manual.
+Cache diisi otomatis oleh GitHub Actions cron setiap 3 jam; tidak perlu warm manual.
 
-> Untuk dev lokal, `id` KV apa pun sudah cukup — Miniflare tidak butuh id asli.
+> Untuk dev lokal, `id` KV apa pun sudah cukup; Miniflare tidak butuh id asli.
 
 ## Catatan
 

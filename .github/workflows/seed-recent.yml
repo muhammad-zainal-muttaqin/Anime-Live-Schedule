@@ -2,7 +2,7 @@ name: Seed recent seasons
 
 on:
   schedule:
-    # Every 3 hours. Cheap now that seeding is write-if-changed — most runs are
+    # Every 3 hours. Cheap now that seeding is write-if-changed: most runs are
     # KV reads (roomy 100k/day bucket) and only the current season, if it moved,
     # actually spends a write (scarce 1000/day bucket).
     - cron: '0 */3 * * *'
@@ -50,7 +50,7 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # The committed search-index.json is a static build asset — it only reaches
+      # The committed search-index.json is a static build asset; it only reaches
       # the live worker on a deploy. Redeploy when (and only when) it changed, so
       # the search page stays in sync. KV (grid/countdown) is read at runtime and
       # needs no deploy. Uses the same Cloudflare token as the KV writes.

@@ -50,7 +50,7 @@ export function AnimeDetailModal({ detail, onClose }: AnimeDetailModalProps) {
     [detail],
   )
 
-  // Esc, scroll-lock, focus-trap, and focus-restore — see useDialog.
+  // Esc, scroll-lock, focus-trap, and focus-restore; see useDialog.
   useDialog(containerRef, onClose, closeRef)
 
   const title = pickTitle(detail.title)

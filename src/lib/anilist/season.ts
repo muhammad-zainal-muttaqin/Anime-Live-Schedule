@@ -3,7 +3,7 @@
  *
  * We use the "standard" anime-season calendar (matches how seasonal charts
  * are usually presented):
- *   winter = Jan–Mar, spring = Apr–Jun, summer = Jul–Sep, fall = Oct–Dec
+ *   winter = Jan-Mar, spring = Apr-Jun, summer = Jul-Sep, fall = Oct-Dec
  */
 
 export const SEASONS = ['winter', 'spring', 'summer', 'fall'] as const
@@ -30,7 +30,9 @@ export const SEASON_EMOJI: Record<Season, string> = {
 export const MIN_YEAR = 1960
 
 export function isSeason(value: unknown): value is Season {
-  return typeof value === 'string' && (SEASONS as readonly string[]).includes(value)
+  return (
+    typeof value === 'string' && (SEASONS as readonly string[]).includes(value)
+  )
 }
 
 export function seasonToApi(season: Season): ApiSeason {
@@ -38,11 +40,20 @@ export function seasonToApi(season: Season): ApiSeason {
 }
 
 /** Which season the given date falls in. */
-export function getCurrentSeason(now: Date = new Date()): { season: Season; year: number } {
+export function getCurrentSeason(now: Date = new Date()): {
+  season: Season
+  year: number
+} {
   const month = now.getUTCMonth() // 0-11
   const year = now.getUTCFullYear()
   const season: Season =
-    month <= 2 ? 'winter' : month <= 5 ? 'spring' : month <= 8 ? 'summer' : 'fall'
+    month <= 2
+      ? 'winter'
+      : month <= 5
+        ? 'spring'
+        : month <= 8
+          ? 'summer'
+          : 'fall'
   return { season, year }
 }
 

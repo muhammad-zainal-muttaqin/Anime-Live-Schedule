@@ -40,7 +40,7 @@ export function useDialog(
   initialFocusRef?: RefObject<HTMLElement | null>,
 ): void {
   // Read through a ref so an unstable `onClose` (e.g. a fresh closure each
-  // render) never tears down and re-arms the whole dialog — setup runs once.
+  // render) never tears down and re-arms the whole dialog; setup runs once.
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 
@@ -64,7 +64,7 @@ export function useDialog(
       if (e.key !== 'Tab') return
       const items = focusables()
       if (items.length === 0) {
-        // Nothing to focus — keep focus off the background entirely.
+        // Nothing to focus; keep focus off the background entirely.
         e.preventDefault()
         return
       }

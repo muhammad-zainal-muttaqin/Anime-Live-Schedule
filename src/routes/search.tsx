@@ -10,12 +10,13 @@ export const Route = createFileRoute('/search')({
 })
 
 const CONTAINER = 'mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8'
-const GRID = 'grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
+const GRID =
+  'grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
 const MAX_RESULTS = 60
 const POPULAR_COUNT = 24
 
 // The index stores cover filenames only; rebuild the CDN URL here. Older index
-// entries may still hold a full URL — pass those through unchanged.
+// entries may still hold a full URL; pass those through unchanged.
 const COVER_URL_PREFIX =
   'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/'
 function coverUrl(cover: string | null): string | null {
@@ -50,19 +51,48 @@ const RANK_PREFIX = 1
 const RANK_WORD = 2
 const RANK_SUBSTR = 3
 const RANK_YEAR = 4
-const NO_MATCH = 99
 
-/** Best relevance tier for a query across an entry's titles (+ year fallback). */
-function rankOf(hay: string[], nq: string, year: number): number {
-  let best = NO_MATCH
-  for (const h of hay) {
-    if (h === nq) return RANK_EXACT
-    if (h.startsWith(nq)) best = Math.min(best, RANK_PREFIX)
-    else if (` ${h}`.includes(` ${nq}`)) best = Math.min(best, RANK_WORD)
-    else if (h.includes(nq)) best = Math.min(best, RANK_SUBSTR)
+/**
+ * How one entry matched the query. Ties inside a tier are broken (in order) by:
+ * `alt` (0 = the display title itself matched; matching only an alternate
+ * title ranks after it) then `close` (query length / matched-title length,
+ * so "JUJUTSU KAISEN" beats "JUJUTSU KAISEN Season 2" for "jujutsu": the
+ * shorter, more identical title wins). Popularity only decides what's left.
+ */
+interface Ranked {
+  r: number
+  alt: 0 | 1
+  close: number
+}
+
+/** Best relevance across an entry's titles (+ year fallback); null = no match. */
+function rankOf(hay: string[], nq: string, year: number): Ranked | null {
+  let best: Ranked | null = null
+  for (let i = 0; i < hay.length; i++) {
+    const h = hay[i]
+    let r: number
+    if (h === nq) r = RANK_EXACT
+    else if (h.startsWith(nq)) r = RANK_PREFIX
+    else if (` ${h}`.includes(` ${nq}`)) r = RANK_WORD
+    else if (h.includes(nq)) r = RANK_SUBSTR
+    else continue
+    const cand: Ranked = {
+      r,
+      alt: i === 0 ? 0 : 1,
+      close: nq.length / h.length,
+    }
+    if (
+      !best ||
+      cand.r < best.r ||
+      (cand.r === best.r &&
+        (cand.alt < best.alt ||
+          (cand.alt === best.alt && cand.close > best.close)))
+    ) {
+      best = cand
+    }
   }
-  if (best === NO_MATCH && /^\d{2,4}$/.test(nq) && String(year).includes(nq)) {
-    return RANK_YEAR
+  if (!best && /^\d{2,4}$/.test(nq) && String(year).includes(nq)) {
+    return { r: RANK_YEAR, alt: 1, close: 0 }
   }
   return best
 }
@@ -138,14 +168,18 @@ function SearchPage() {
   const results = useMemo<SearchIndexEntry[]>(() => {
     const nq = normalizeText(deferredQ.trim())
     if (nq.length < 2) return []
-    const scored: Array<{ p: Prepared; r: number }> = []
+    const scored: Array<{ p: Prepared; m: Ranked }> = []
     for (const p of prepared) {
-      const r = rankOf(p.hay, nq, p.entry.year)
-      if (r !== NO_MATCH) scored.push({ p, r })
+      const m = rankOf(p.hay, nq, p.entry.year)
+      if (m) scored.push({ p, m })
     }
+    // Tier, then display-title match, then title closeness; popularity and
+    // score only settle what's still tied (see Ranked above).
     scored.sort(
       (a, b) =>
-        a.r - b.r ||
+        a.m.r - b.m.r ||
+        a.m.alt - b.m.alt ||
+        b.m.close - a.m.close ||
         b.p.pop - a.p.pop ||
         (b.p.entry.averageScore ?? 0) - (a.p.entry.averageScore ?? 0) ||
         a.p.entry.title.localeCompare(b.p.entry.title),
@@ -175,20 +209,27 @@ function SearchPage() {
               <Tv className="h-5 w-5" />
             </Link>
             <div className="min-w-0">
-              <h1 className="text-lg font-bold leading-tight tracking-tight text-ink">Cari anime</h1>
-              <p className="truncate text-xs text-ink-subtle">Semua musim · data AniList</p>
+              <h1 className="text-lg font-bold leading-tight tracking-tight text-ink">
+                Cari anime
+              </h1>
+              <p className="truncate text-xs text-ink-subtle">
+                Semua musim · data AniList
+              </p>
             </div>
           </header>
 
           <div className="relative mt-3">
-            <Search aria-hidden className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-ink-muted" />
+            <Search
+              aria-hidden
+              className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-ink-muted"
+            />
             <input
               ref={inputRef}
               type="text"
               enterKeyHint="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Judul apa pun — Jepang, Inggris, atau singkatan…"
+              placeholder="Judul apa pun: Jepang, Inggris, atau singkatan…"
               autoComplete="off"
               autoCapitalize="off"
               spellCheck={false}
@@ -213,17 +254,22 @@ function SearchPage() {
 
       <div className={`${CONTAINER} py-6`}>
         {failed ? (
-          <EmptyMessage title="Gagal memuat indeks pencarian" body="Coba refresh halaman sebentar lagi." />
+          <EmptyMessage
+            title="Gagal memuat indeks pencarian"
+            body="Coba refresh halaman sebentar lagi."
+          />
         ) : searching ? (
           !index ? (
             <PosterSkeletonGrid />
           ) : results.length > 0 ? (
             <>
               <SectionLabel>
-                <span className="font-semibold tabular-nums text-ink-muted">{results.length}</span>
+                <span className="font-semibold tabular-nums text-ink-muted">
+                  {results.length}
+                </span>
                 {results.length === MAX_RESULTS ? ' judul teratas' : ' judul'}
               </SectionLabel>
-              <div className={`animate-fade-in mt-4 ${GRID}`}>
+              <div className={`stagger-children cv-cards mt-4 ${GRID}`}>
                 {results.map((anime) => (
                   <SearchCard key={anime.id} anime={anime} />
                 ))}
@@ -241,7 +287,7 @@ function SearchPage() {
             {!index ? (
               <PosterSkeletonGrid />
             ) : (
-              <div className={`animate-fade-in mt-4 ${GRID}`}>
+              <div className={`stagger-children cv-cards mt-4 ${GRID}`}>
                 {popular.map((anime) => (
                   <SearchCard key={anime.id} anime={anime} />
                 ))}
@@ -293,7 +339,11 @@ function SearchCard({ anime }: { anime: SearchIndexEntry }) {
   return (
     <Link
       to="/$season/$year/$id"
-      params={{ season: anime.season, year: String(anime.year), id: String(anime.id) }}
+      params={{
+        season: anime.season,
+        year: String(anime.year),
+        id: String(anime.id),
+      }}
       className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring rounded-2xl"
     >
       <div className="aspect-[2/3] overflow-hidden rounded-2xl bg-surface-2 ring-1 ring-border transition group-hover:ring-accent-ring group-focus-visible:ring-accent-ring">
@@ -317,7 +367,11 @@ function SearchCard({ anime }: { anime: SearchIndexEntry }) {
         </p>
         <p className="text-xs text-ink-subtle">
           {seasonLabel} {anime.year}
-          {anime.averageScore ? <span className="ml-1.5 text-accent-strong">★ {anime.averageScore}</span> : null}
+          {anime.averageScore ? (
+            <span className="ml-1.5 text-accent-strong">
+              ★ {anime.averageScore}
+            </span>
+          ) : null}
         </p>
       </div>
     </Link>

@@ -6,7 +6,7 @@
   "main": "@tanstack/react-start/server-entry",
 
   // KV namespace used as the AniList cache. The Worker only ever reads/writes
-  // KV — it never fetches AniList (that IP range is blocked). Data is put here
+  // KV; it never fetches AniList (that IP range is blocked). Data is put here
   // by scripts/seed-all.ts (all seasons) and the /seed page (current + upcoming).
   //
   // For local dev (`pnpm dev`) the Cloudflare Vite plugin emulates this with
@@ -14,11 +14,11 @@
   "kv_namespaces": [
     {
       "binding": "CACHE",
-      "id": "57122047ffca4a4c9697df42427760bf"
-    }
+      "id": "57122047ffca4a4c9697df42427760bf",
+    },
   ],
 
   "observability": {
-    "enabled": false
-  }
+    "enabled": false,
+  },
 }

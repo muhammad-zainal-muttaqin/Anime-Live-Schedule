@@ -8,7 +8,7 @@ const ClockContext = createContext(0)
  * timers: a 100+ card grid would otherwise spin up 100+ intervals and re-render
  * every card every second. Here a single interval lives at the root and only
  * components that call `useClock` (the airing countdowns) re-render on each
- * tick — the provider's `children` are a stable prop, so the rest of the tree
+ * tick; the provider's `children` are a stable prop, so the rest of the tree
  * is untouched.
  *
  * Starts at 0 so SSR output is deterministic; the client sets the real time on

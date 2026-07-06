@@ -26,12 +26,14 @@ export function SeasonYearPicker({ season, year }: SeasonYearPickerProps) {
 
   return (
     <div className="flex items-center justify-between gap-2 sm:gap-3">
-      {/* Season segmented control. Below sm the inactive tabs collapse to
-          their emoji so the whole picker fits one row. */}
+      {/* Season segmented control. Never scrolls: below xs every tab is
+          emoji-only (the H1 right under it repeats the season name), from xs
+          the active tab's label expands via an animated 0fr->1fr grid column,
+          and from sm every label shows. */}
       <div
         role="tablist"
         aria-label="Pilih musim"
-        className="flex min-w-0 items-center gap-1 overflow-x-auto rounded-xl bg-surface p-1 ring-1 ring-border"
+        className="flex min-w-0 items-center gap-0.5 rounded-xl bg-surface p-1 ring-1 ring-border sm:gap-1"
       >
         {SEASONS.map((s) => {
           const active = s === season
@@ -45,17 +47,34 @@ export function SeasonYearPicker({ season, year }: SeasonYearPickerProps) {
               aria-selected={active}
               aria-label={SEASON_LABELS[s]}
               data-season={s}
-              className={`flex shrink-0 items-center gap-1.5 rounded-lg py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring ${
+              className={`flex items-center rounded-lg px-2 py-1.5 text-sm font-medium transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring sm:px-3 ${
                 active
-                  ? 'bg-accent-strong px-3 text-accent-ink shadow-sm'
-                  : 'px-2.5 text-ink-muted hover:bg-white/5 hover:text-ink sm:px-3'
+                  ? 'bg-accent-strong text-accent-ink shadow-sm'
+                  : 'text-ink-muted hover:bg-white/5 hover:text-ink'
               }`}
             >
               <span aria-hidden className="text-[0.95em] leading-none">
                 {SEASON_EMOJI[s]}
               </span>
-              <span className={active ? undefined : 'hidden sm:inline'}>
-                {SEASON_LABELS[s]}
+              {/* Animated width: the grid column tweens between 0fr and 1fr,
+                  so no layout property is animated directly. The label's
+                  leading gap lives on the innermost span so the clipped
+                  column truly collapses to 0 (padding on the clipping span
+                  itself would survive as phantom width). */}
+              <span
+                className={`grid min-w-0 grid-cols-[0fr] transition-[grid-template-columns] duration-300 ease-out-expo sm:grid-cols-[1fr] ${
+                  active ? 'xs:grid-cols-[1fr]' : ''
+                }`}
+              >
+                <span
+                  className={`min-w-0 overflow-hidden opacity-0 transition-opacity duration-200 sm:opacity-100 ${
+                    active ? 'xs:opacity-100' : ''
+                  }`}
+                >
+                  <span className="block whitespace-nowrap ps-1.5">
+                    {SEASON_LABELS[s]}
+                  </span>
+                </span>
               </span>
             </Link>
           )
@@ -63,7 +82,7 @@ export function SeasonYearPicker({ season, year }: SeasonYearPickerProps) {
       </div>
 
       {/* Year select + prev/next season nav */}
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
         <Link
           to="/$season/$year"
           params={{ season: prev.season, year: String(prev.year) }}

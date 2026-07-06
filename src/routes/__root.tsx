@@ -16,7 +16,7 @@ export interface RouterContext {
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   head: () => {
-    const title = 'AnimeSeasons — Jadwal Tayang Anime per Musim'
+    const title = 'AnimeSeasons | Jadwal Tayang Anime per Musim'
     const description =
       'Daftar anime per musim dan tahun, lengkap dengan jadwal tayang episode terbaru. Data dari AniList, cepat karena di-cache.'
     return {

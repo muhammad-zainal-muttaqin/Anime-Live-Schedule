@@ -44,12 +44,12 @@ export const Route = createFileRoute('/$season/$year')({
     const label = `${SEASON_LABELS[season]} ${year}`
     return {
       meta: [
-        { title: `${label} — AnimeSeasons` },
+        { title: `${label} | AnimeSeasons` },
         {
           name: 'description',
-          content: `Jadwal tayang anime ${label} — daftar judul lengkap dengan informasi episode, studio, genre, skor, dan jadwal tayang episode terbaru. Data dari AniList.`,
+          content: `Jadwal tayang anime ${label}: daftar judul lengkap dengan informasi episode, studio, genre, skor, dan jadwal tayang episode terbaru. Data dari AniList.`,
         },
-        { property: 'og:title', content: `${label} — AnimeSeasons` },
+        { property: 'og:title', content: `${label} | AnimeSeasons` },
         {
           property: 'og:description',
           content: `Jadwal tayang anime ${label}. Lengkap dengan jadwal episode terbaru, skor, genre, dan studio.`,
@@ -169,7 +169,7 @@ function SeasonPage() {
     [data.media, filters],
   )
   // Facet options reflect the other active filters, but not the genre picks
-  // themselves — so a checked genre never erases its own siblings.
+  // themselves, so a checked genre never erases its own siblings.
   const genreOptions = useMemo(
     () =>
       deriveGenreCounts(applyFilters(data.media, { ...filters, genres: [] })),
@@ -281,14 +281,14 @@ function SeasonPage() {
       ) : filters.view === 'list' ? (
         <div
           key="list"
-          className="animate-fade-in mt-4 flex flex-col divide-y divide-border"
+          className="stagger-children cv-rows mt-4 flex flex-col divide-y divide-border"
         >
           {filtered.map((anime) => (
             <AnimeListRow key={anime.id} anime={anime} season={s} year={year} />
           ))}
         </div>
       ) : (
-        <div key="grid" className={`animate-fade-in mt-5 ${GRID}`}>
+        <div key="grid" className={`stagger-children cv-cards mt-5 ${GRID}`}>
           {filtered.map((anime) => (
             <AnimeCard key={anime.id} anime={anime} season={s} year={year} />
           ))}
@@ -331,7 +331,7 @@ function EmptyState() {
         Belum ada judul untuk musim ini
       </p>
       <p className="text-sm text-pretty text-ink-subtle">
-        Coba pilih musim atau tahun lain — data untuk musim mendatang biasanya
+        Coba pilih musim atau tahun lain. Data untuk musim mendatang biasanya
         muncul beberapa bulan sebelum tayang.
       </p>
     </div>

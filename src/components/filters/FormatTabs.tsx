@@ -15,7 +15,7 @@ interface FormatTabsProps {
   fluid?: boolean
 }
 
-/** Segmented format filter — same control vocabulary as the season tablist. */
+/** Segmented format filter; same control vocabulary as the season tablist. */
 export function FormatTabs({
   value,
   onChange,

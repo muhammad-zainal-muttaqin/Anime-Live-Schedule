@@ -1,7 +1,7 @@
 /**
  * Read the search index from Cloudflare KV and write it as a static JSON file
  * at `public/search-index.json`. The search page then fetches this file
- * directly — no KV access needed at runtime.
+ * directly; no KV access needed at runtime.
  *
  *   node --experimental-strip-types scripts/build-search-index.ts
  *
@@ -19,7 +19,9 @@ const KEY = 'anilist:search:v1:index'
 
 async function main() {
   if (!ACCOUNT_ID || !API_TOKEN) {
-    console.error('Missing CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN in env.')
+    console.error(
+      'Missing CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN in env.',
+    )
     process.exit(1)
   }
 
@@ -35,11 +37,18 @@ async function main() {
 
   const index = await res.json()
   const json = JSON.stringify(index)
-  const out = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'search-index.json')
+  const out = resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'public',
+    'search-index.json',
+  )
   writeFileSync(out, json, 'utf-8')
 
   const count = Array.isArray(index) ? index.length : 0
-  console.log(`Search index ditulis ke public/search-index.json — ${count} entri`)
+  console.log(
+    `Search index ditulis ke public/search-index.json: ${count} entri`,
+  )
 }
 
 main().catch((err) => {
