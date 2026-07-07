@@ -37,7 +37,7 @@ export const AnimeCard = memo(function AnimeCard({
       aria-label={title}
     >
       <div
-        className="relative aspect-[2/3] overflow-hidden rounded-2xl bg-surface-2 ring-1 ring-border shadow-sm transition duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-y-1 group-hover:shadow-xl group-hover:shadow-black/40 group-hover:ring-accent-line group-focus-visible:ring-2 group-focus-visible:ring-accent-ring"
+        className="card-poster relative aspect-[2/3] overflow-hidden rounded-2xl bg-surface-2"
         style={
           anime.coverImage.color
             ? { backgroundColor: anime.coverImage.color }

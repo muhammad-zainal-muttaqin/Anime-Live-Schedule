@@ -269,7 +269,7 @@ function SearchPage() {
                 </span>
                 {results.length === MAX_RESULTS ? ' judul teratas' : ' judul'}
               </SectionLabel>
-              <div className={`stagger-children cv-cards mt-4 ${GRID}`}>
+              <div className={`grid-in reveal-cards cv-cards mt-4 ${GRID}`}>
                 {results.map((anime) => (
                   <SearchCard key={anime.id} anime={anime} />
                 ))}
@@ -287,7 +287,7 @@ function SearchPage() {
             {!index ? (
               <PosterSkeletonGrid />
             ) : (
-              <div className={`stagger-children cv-cards mt-4 ${GRID}`}>
+              <div className={`grid-in reveal-cards cv-cards mt-4 ${GRID}`}>
                 {popular.map((anime) => (
                   <SearchCard key={anime.id} anime={anime} />
                 ))}
@@ -346,14 +346,14 @@ function SearchCard({ anime }: { anime: SearchIndexEntry }) {
       }}
       className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring rounded-2xl"
     >
-      <div className="aspect-[2/3] overflow-hidden rounded-2xl bg-surface-2 ring-1 ring-border transition group-hover:ring-accent-ring group-focus-visible:ring-accent-ring">
+      <div className="card-poster aspect-[2/3] overflow-hidden rounded-2xl bg-surface-2">
         {cover ? (
           <img
             src={cover}
             alt=""
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-cover transition group-hover:scale-105"
+            className="h-full w-full object-cover transition duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.06]"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-ink-subtle">

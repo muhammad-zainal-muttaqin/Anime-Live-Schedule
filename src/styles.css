@@ -73,6 +73,9 @@
   --accent-soft: oklch(0.74 0.15 var(--accent-h) / 0.14);
   --accent-line: oklch(0.74 0.15 var(--accent-h) / 0.32);
   --accent-ring: oklch(0.74 0.15 var(--accent-h) / 0.6);
+  /* Soft season-tinted glow layered into the card hover shadow. Reads from the
+     registered --accent-h, so it morphs with the season like every other token. */
+  --accent-glow: oklch(0.72 0.16 var(--accent-h) / 0.34);
 }
 
 /* Register the three season variables as typed properties so they can
@@ -238,10 +241,31 @@ h3 {
   animation: sheet-up 0.28s var(--ease-out-expo);
 }
 
-@keyframes card-in {
+/* ── Entrance motion ─────────────────────────────────────────────────────────
+   Two cooperating, compositor-only layers (opacity + transform only):
+
+   1. `.grid-in` — a one-time flourish on the CONTAINER as a view mounts, so a
+      season or filter switch arrives as one soft upward settle instead of
+      snapping. It rides above the per-card reveals without competing: it
+      transforms the parent, the reveals transform the children.
+
+   2. `.reveal-cards > *` / `.reveal-rows > *` — each poster or row greets you as
+      it scrolls into view, on a native scroll-driven timeline. Timing is LINEAR
+      on purpose: the scroll gesture already supplies the easing (a flick
+      decelerates, a trackpad carries momentum), so a CSS curve on top would
+      double-ease. The range is short (`entry` only) so an item settles just
+      after it appears and then holds perfectly still — no transform bound to
+      continued scrolling, nothing to smear or wobble across a 100-card grid.
+
+   The reveal lives inside `@supports (animation-timeline: view())` AND
+   `prefers-reduced-motion: no-preference`. Where either fails (older Safari,
+   reduced-motion, headless SSR) the cards are simply their visible selves —
+   the motion only ever ENHANCES a visible baseline, so nothing can stick at
+   opacity:0, and not a line of JS runs on the scroll path. */
+@keyframes grid-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
@@ -249,49 +273,73 @@ h3 {
   }
 }
 
-/* Staggered entrance for the season grid/list. Delays live on nth-child (not
-   inline --i custom properties) so React prop updates while filtering can't
-   restart finished animations. The base delay equals the cap, so items beyond
-   the wave enter together, last, instead of before the first row. */
-.stagger-children > * {
-  animation: card-in 0.3s var(--ease-out-quint) backwards;
-  animation-delay: 0.36s;
+@keyframes card-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.955);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
-.stagger-children > :nth-child(1) {
-  animation-delay: 0s;
+
+@keyframes row-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
-.stagger-children > :nth-child(2) {
-  animation-delay: 0.03s;
+
+.grid-in {
+  animation: grid-in 0.5s var(--ease-out-expo) both;
 }
-.stagger-children > :nth-child(3) {
-  animation-delay: 0.06s;
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal-cards > * {
+      transform-origin: center bottom;
+      animation: card-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 4% entry 42%;
+    }
+    .reveal-rows > * {
+      animation: row-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 30%;
+    }
+  }
 }
-.stagger-children > :nth-child(4) {
-  animation-delay: 0.09s;
+
+/* Poster hover: lift + season-tinted depth, on the INNER poster box so the outer
+   card stays free for the scroll-reveal above (a `fill: both` animation would
+   otherwise pin the transform and swallow the lift). Paired with the image zoom
+   in AnimeCard; together they read as "the poster leans toward you". This owns
+   the hairline ring + shadow itself (one box-shadow stack) rather than layering
+   Tailwind's ring utilities, which set box-shadow too and would fight the glow. */
+.card-poster {
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 1px 3px oklch(0 0 0 / 0.3);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition:
+    transform 0.32s var(--ease-out-quint),
+    box-shadow 0.32s var(--ease-out-quint);
 }
-.stagger-children > :nth-child(5) {
-  animation-delay: 0.12s;
+.group:hover .card-poster {
+  transform: translateY(-6px);
+  box-shadow:
+    0 0 0 1px var(--accent-line),
+    0 24px 46px -20px oklch(0 0 0 / 0.7),
+    0 12px 32px -18px var(--accent-glow);
 }
-.stagger-children > :nth-child(6) {
-  animation-delay: 0.15s;
-}
-.stagger-children > :nth-child(7) {
-  animation-delay: 0.18s;
-}
-.stagger-children > :nth-child(8) {
-  animation-delay: 0.21s;
-}
-.stagger-children > :nth-child(9) {
-  animation-delay: 0.24s;
-}
-.stagger-children > :nth-child(10) {
-  animation-delay: 0.27s;
-}
-.stagger-children > :nth-child(11) {
-  animation-delay: 0.3s;
-}
-.stagger-children > :nth-child(12) {
-  animation-delay: 0.33s;
+.group:focus-visible .card-poster {
+  outline-color: var(--accent-ring);
 }
 
 /* CSS-only virtualization for long card grids and list rows: offscreen items

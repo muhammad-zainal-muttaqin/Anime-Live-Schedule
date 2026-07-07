@@ -69,8 +69,9 @@ Every interactive element ships default / hover / focus-visible states; focus
 ring is `2px var(--accent-ring)` with a 2px offset (global `:focus-visible`
 fallback + explicit per-control rings).
 
-- **AnimeCard**: 2:3 poster, ring hairline; hover lifts 4px + zooms art 6% +
-  accent ring + shadow. Score, non-TV format, and season-accent countdown pill
+- **AnimeCard**: 2:3 poster, ring hairline; hover lifts the poster 6px + zooms
+  art 6% + swaps the hairline for an accent line and a season-tinted glow shadow
+  (`.card-poster`). Score, non-TV format, and season-accent countdown pill
   overlay the art on a legibility scrim. Redundant "TV" badge suppressed.
 - **SeasonYearPicker**: segmented season control (active = accent fill) that
   never scrolls. Below `xs` (27rem) every tab is emoji-only; from `xs` the
@@ -94,17 +95,37 @@ fallback + explicit per-control rings).
 
 ## Motion
 
-- 150-350 ms, exponential ease-out (`--ease-out-quint`, `--ease-out-expo`). No
-  bounce, no orchestrated page-load sequence.
-- Motion conveys state only: hover lift, modal open (sheet-up / pop-in), backdrop
-  fade. Content is visible by default, never gated behind a reveal.
-- Grid/list entrance staggers 30ms per item via `.stagger-children` (nth-child
-  delays, capped at 12; the rest enter together). Season switch morphs the
-  accent hue (0.5s, registered `@property` variables); the ambient glow follows
-  via unregistered `--glow-h` so it snaps in one repaint instead of rasterizing
-  a full-viewport gradient per frame.
-- Long grids/lists are CSS-virtualized (`.cv-cards` / `.cv-rows` set
-  `content-visibility: auto` on children), so offscreen cards skip style,
-  layout, and paint; a 100+ card season switch only renders the viewport.
+Motion is felt, not watched. It runs on the compositor (opacity + transform
+only), stays out of the way of a glanceable scan, and every piece has an off
+switch under `prefers-reduced-motion`. Durations 150–500 ms, exponential
+ease-out (`--ease-out-quint`, `--ease-out-expo`), no bounce.
+
+- **Grid entrance, two cooperating layers.** The container settles up once on
+  mount (`.grid-in`, 0.5s) so a season/filter switch arrives as one unit instead
+  of snapping. Then each poster/row greets you *as it scrolls into view*
+  (`.reveal-cards` / `.reveal-rows`): a rise + fade + hairline scale on a native
+  **scroll-driven timeline** (`animation-timeline: view()`). Timing is **linear**
+  on purpose — the scroll gesture supplies the easing, so a CSS curve on top
+  would double-ease. The range is short (`entry` only) so an item settles just
+  after it appears and then holds still; no transform is bound to continued
+  scrolling, so a 100-card grid never smears or wobbles. The reveal is gated
+  behind `@supports (animation-timeline: view())` **and**
+  `prefers-reduced-motion: no-preference`; where either fails (older Safari,
+  reduced motion, headless SSR) cards are simply visible. Motion only ever
+  enhances a visible baseline — content is never gated behind a reveal, and no
+  JS runs on the scroll path.
+- **Hover** (`.card-poster`): the poster lifts 6px and gains a season-tinted
+  glow shadow; the art zooms 6% behind it. Fast (~320ms), reads as a response,
+  not a performance. Modal opens sheet-up (mobile) / pop-in (≥sm) over a fading,
+  blurred backdrop.
+- **Season switch** morphs the accent hue (0.5s, registered `@property`
+  variables); the ambient glow follows via unregistered `--glow-h` so it snaps
+  in one repaint instead of rasterizing a full-viewport gradient per frame.
+- **CSS virtualization**: long grids/lists set `content-visibility: auto` on
+  children (`.cv-cards` / `.cv-rows`), so offscreen cards skip style, layout, and
+  paint; a 100+ card season switch only renders the viewport. The scroll reveal
+  is compatible: a view-timeline is a pure function of scroll offset, so a
+  still-skipped card resolves to the correct frame the instant it renders.
 - `prefers-reduced-motion` collapses transforms to a crossfade and neutralizes
-  transitions, animations, and stagger delays globally.
+  transitions and animations globally; the scroll reveals are absent entirely
+  (gated above), so nothing can stick at `opacity: 0`.

@@ -66,7 +66,7 @@ export const AnimeListRow = memo(function AnimeListRow({
             alt=""
             loading="lazy"
             decoding="async"
-            className="absolute inset-0 h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover transition duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.06]"
           />
         ) : null}
       </div>

@@ -281,14 +281,14 @@ function SeasonPage() {
       ) : filters.view === 'list' ? (
         <div
           key="list"
-          className="stagger-children cv-rows mt-4 flex flex-col divide-y divide-border"
+          className="grid-in reveal-rows cv-rows mt-4 flex flex-col divide-y divide-border"
         >
           {filtered.map((anime) => (
             <AnimeListRow key={anime.id} anime={anime} season={s} year={year} />
           ))}
         </div>
       ) : (
-        <div key="grid" className={`stagger-children cv-cards mt-5 ${GRID}`}>
+        <div key="grid" className={`grid-in reveal-cards cv-cards mt-5 ${GRID}`}>
           {filtered.map((anime) => (
             <AnimeCard key={anime.id} anime={anime} season={s} year={year} />
           ))}
